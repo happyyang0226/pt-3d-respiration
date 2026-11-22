@@ -1,0 +1,36 @@
+{
+  "series": {
+    "id": "breath-series",
+    "title": "호흡 생리학 4부작",
+    "slug": "호흡생리학",
+    "org": "청암대학교 물리치료과",
+    "strip_sub": "물리치료과 · 호흡 생리학 3D 강의",
+    "eyebrow": "Cheongam Univ. · Respiratory Physiology · True 3D Series",
+    "hero_html": "호흡이 여는 <span>신경 · 혈액 · 뇌 면역</span><br>4부작 3D 애니메이션",
+    "narration_sample": "안녕하세요. 호흡 생리학 사부작 나레이션 목소리입니다. 숨을 길게 내쉬면 미주신경이 활성화됩니다."
+  },
+  "glossary": "glossary.json",
+  "medical": true,
+  "output": "호흡생리학_4부작_통합포털.html",
+  "episodes": [
+    {"id": "breath-ep1", "file": "episodes/ep1.html", "title": "신경계의 스위치", "sub": "횡격막과 미주신경의 비밀",
+     "desc": "횡격막·식도열공이 미주신경을 당기고 놓아주며 부교감 스위치를 켜는 과정과 5대 장기 반응",
+     "tags": ["자율신경 불균형", "식도열공", "미주신경", "5대 장기"], "c1": "#FBBF24", "c2": "#FB7185"},
+    {"id": "breath-ep2", "file": "episodes/ep2.html", "title": "혈액 속 화학 공장", "sub": "산-염기 균형과 과호흡",
+     "desc": "폐포 가스 교환과 중탄산염 완충, 과호흡 시 알부민이 유리 칼슘을 붙잡아 손발 저림이 생기는 원리",
+     "tags": ["CO₂·pH", "호흡성 알칼리증", "알부민·Ca²⁺", "말초신경"], "c1": "#818CF8", "c2": "#38BDF8"},
+    {"id": "breath-ep3", "file": "episodes/ep3.html", "title": "뇌를 씻어내는 펌프", "sub": "1차 호흡과 뇌척수액 정화",
+     "desc": "두개골-경막관-천골 리듬이 뇌척수액을 순환시키고 글림프 시스템이 뇌 노폐물과 신경 염증을 씻어내는 과정",
+     "tags": ["두개천골 리듬", "뇌척수액", "글림프", "경부 림프"], "c1": "#2DD4BF", "c2": "#38BDF8"},
+    {"id": "breath-ep4", "file": "episodes/ep4.html", "label": "통합편", "title": "통합 마스터피스", "sub": "신경·혈액·뇌 면역의 삼중주",
+     "desc": "1~3편의 세 축이 한 번의 깊은 호흡 속에서 동시에 공명하는 전신 통합 모델과 바이오피드백 콘솔",
+     "tags": ["삼중 공명", "공명 호흡", "통합 콘솔"], "c1": "#FBBF24", "c2": "#2DD4BF"}
+  ],
+  "test": {
+    "select_word": "횡격막", "select_expect": "가로막",
+    "josa_query": "식도열공이", "josa_expect": "식도구멍",
+    "abbr_query": "SA node", "abbr_expect": "굴심방결절",
+    "local_term": "미주신경",
+    "remote_term": "알부민", "remote_expect_id": "breath-ep2"
+  }
+}

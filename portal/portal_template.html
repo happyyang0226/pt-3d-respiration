@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>__SERIES_TITLE__ · True 3D 포털</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* 청암대학교 공식 색 */
+    --ca-top: #5d8cf5; --ca-accent: #5380f0; --ca-yellow: #f4de57; --ca-deep: #27417f; --ca-green: #5e9a2e; --ca-text: #363b4f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #040711; color: #F1F5F9;
+    background-image: radial-gradient(ellipse at 50% -10%, rgba(93,140,245,0.14), transparent 60%),
+                      radial-gradient(ellipse at 90% 110%, rgba(45,212,191,0.08), transparent 55%);
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  button { font-family: inherit; cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* ---------- 청암대 상단 띠 ---------- */
+  .ca-strip { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--ca-deep); border-bottom: 3px solid var(--ca-top); font-size: 13px; color: #E6ECFF; }
+  .ca-strip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ca-yellow); box-shadow: 0 0 10px var(--ca-yellow); }
+  .ca-strip b { font-weight: 900; letter-spacing: .02em; }
+  .ca-strip .sub { color: #AFC3F7; }
+  .ca-strip .sp { flex: 1; }
+  .ca-strip button { height: 28px; padding: 0 11px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: 1px solid rgba(244,222,87,.55); background: rgba(39,65,127,.6); color: var(--ca-yellow); }
+  .ca-strip button:hover { background: rgba(93,140,245,.35); }
+  @media (max-width: 640px) { .ca-strip .sub, .ca-strip .lbl { display: none; } }
+
+  /* ---------- 홈 ---------- */
+  #home { min-height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; padding: 44px 20px 40px; }
+  .eyebrow { font-size: 12px; letter-spacing: .22em; color: var(--ca-top); text-transform: uppercase; margin-bottom: 14px; text-align: center; }
+  h1 { font-size: clamp(26px, 4.2vw, 42px); font-weight: 900; letter-spacing: -.02em; text-align: center; line-height: 1.25; }
+  h1 span { background: linear-gradient(90deg, #FBBF24, #818CF8, #2DD4BF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { margin-top: 14px; max-width: 660px; text-align: center; color: #94A3B8; font-size: 15px; line-height: 1.7; }
+  .quick { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .quick button { height: 40px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: 700; border: 1px solid rgba(93,140,245,.55); background: rgba(83,128,240,.16); color: #DCE6FF; }
+  .quick button:hover { background: rgba(83,128,240,.3); }
+  .grid { margin-top: 32px; width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    position: relative; text-align: left; border-radius: 18px; padding: 24px 24px 22px;
+    background: rgba(10,16,30,0.78); border: 1px solid rgba(148,163,184,0.16);
+    color: inherit; overflow: hidden; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--c1), var(--c2)); }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--c1); box-shadow: 0 14px 40px rgba(0,0,0,.55); outline: none; }
+  .card .no { font-size: 12px; font-weight: 700; color: var(--c1); }
+  .card h2 { margin-top: 8px; font-size: 22px; font-weight: 900; }
+  .card h3 { margin-top: 2px; font-size: 15px; font-weight: 500; color: #CBD5E1; }
+  .card p { margin-top: 12px; font-size: 13.5px; line-height: 1.7; color: #94A3B8; }
+  .tags { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--c1); color: var(--c1); }
+  .go { margin-top: 18px; font-size: 13px; font-weight: 700; color: var(--c1); display: flex; justify-content: space-between; }
+  .go small { color: #94A3B8; font-weight: 500; }
+
+  /* 교수용 상자 */
+  .prof { margin-top: 28px; width: 100%; max-width: 1100px; border-radius: 16px; border: 1px dashed rgba(94,154,46,.6); background: rgba(94,154,46,.08); padding: 16px 18px; }
+  .prof summary { cursor: pointer; font-weight: 700; color: #B7E08F; font-size: 14px; list-style: none; }
+  .prof summary::-webkit-details-marker { display: none; }
+  .prof .row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .prof .sw { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: #E2E8F0; cursor: pointer; }
+  .prof .sw input { width: 18px; height: 18px; accent-color: var(--ca-green); }
+  .prof button, .prof label.bt { height: 34px; padding: 0 12px; border-radius: 9px; font-size: 13px; font-weight: 700; border: 1px solid rgba(94,154,46,.6); background: #0F172A; color: #D9F2C2; display: inline-flex; align-items: center; cursor: pointer; }
+  .prof button:hover, .prof label.bt:hover { background: rgba(94,154,46,.25); }
+  .prof .hint { margin-top: 10px; font-size: 12px; color: #94A3B8; line-height: 1.65; }
+  .prof .counts { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .prof .counts span { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(15,23,42,.8); border: 1px solid #334155; color: #CBD5E1; }
+  .prof .msg { font-size: 12.5px; color: #F4DE57; }
+
+  .note { margin-top: 26px; font-size: 12.5px; color: #64748B; text-align: center; line-height: 1.7; }
+  .foot { margin-top: 18px; font-size: 12px; color: #64748B; }
+  .foot a { color: var(--ca-top); text-decoration: none; }
+
+  /* ---------- 내 노트 ---------- */
+  #notesView { min-height: calc(100% - 40px); padding: 24px 20px 60px; display: flex; flex-direction: column; align-items: center; }
+  .nv { width: 100%; max-width: 980px; }
+  .nv-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .nv-top h2 { font-size: 22px; font-weight: 900; flex: 1; }
+  .nv-top h2 small { font-size: 13px; color: #94A3B8; font-weight: 500; margin-left: 6px; }
+  .nbt { height: 36px; padding: 0 13px; border-radius: 10px; font-size: 13px; font-weight: 700; border: 1px solid #334155; background: #0F172A; color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .nbt:hover { background: #1E293B; }
+  .nbt.pri { background: var(--ca-accent); border-color: var(--ca-accent); color: #fff; }
+  .nv-tools { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .nv-tools input[type=search] { flex: 1 1 220px; height: 38px; border-radius: 10px; border: 1px solid #334155; background: #0B1222; color: #F1F5F9; padding: 0 12px; font-family: inherit; font-size: 14px; }
+  .flt { display: flex; gap: 6px; flex-wrap: wrap; }
+  .flt button { height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px; border: 1px solid #334155; background: transparent; color: #CBD5E1; }
+  .flt button[aria-pressed=true] { background: var(--ca-yellow); color: #27417f; border-color: var(--ca-yellow); font-weight: 700; }
+  .nv-msg { margin-top: 8px; font-size: 12.5px; color: var(--ca-yellow); min-height: 18px; }
+  .chap { margin-top: 18px; }
+  .chap h3 { font-size: 15px; font-weight: 900; padding: 8px 12px; border-radius: 10px; background: rgba(39,65,127,.45); border-left: 4px solid var(--c1, var(--ca-top)); display: flex; justify-content: space-between; }
+  .chap h3 small { color: #AFC3F7; font-weight: 500; }
+  .it { margin-top: 10px; border: 1px solid rgba(148,163,184,.2); border-radius: 12px; padding: 12px 14px; background: rgba(10,16,30,.75); }
+  .it.star { border-color: var(--ca-yellow); }
+  .it-h { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .it-h b { font-size: 14px; flex: 1; }
+  .badge { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: rgba(244,222,87,.15); color: var(--ca-yellow); border: 1px solid rgba(244,222,87,.5); }
+  .badge.pen { background: rgba(93,140,245,.15); color: #C7D7FF; border-color: rgba(93,140,245,.5); }
+  .it p { margin-top: 8px; font-size: 13.5px; color: #CBD5E1; line-height: 1.65; white-space: pre-wrap; }
+  .it p mark, .it b mark { background: var(--ca-yellow); color: #172033; border-radius: 2px; }
+  .it svg { margin-top: 8px; width: 100%; max-height: 180px; background: #F8FAFC; border-radius: 8px; }
+  .it .go2 { margin-top: 8px; height: 30px; padding: 0 11px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: 1px solid rgba(93,140,245,.6); background: transparent; color: #C7D7FF; }
+  .empty { margin-top: 30px; text-align: center; color: #94A3B8; font-size: 14px; line-height: 1.8; }
+
+  /* ---------- 뷰어 ---------- */
+  #viewer { display: none; height: 100%; flex-direction: column; }
+  #viewer.on { display: flex; }
+  .bar { flex: 0 0 auto; height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: rgba(2,6,15,0.96); border-bottom: 3px solid var(--ca-top); }
+  .bar .btn { height: 34px; padding: 0 11px; border-radius: 10px; font-size: 13px; font-weight: 500; background: #0F172A; color: #E2E8F0; border: 1px solid #334155; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .bar .btn:hover { background: #1E293B; }
+  .bar .btn:disabled { opacity: .35; cursor: default; }
+  .tabs { flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 13px; background: transparent; color: #94A3B8; border: 1px solid transparent; white-space: nowrap; }
+  .tab:hover { color: #E2E8F0; }
+  .tab.active { color: var(--c1); border-color: var(--c1); font-weight: 700; }
+  @media (max-width: 1440px) { .tab .long { display: none; } }
+  @media (max-width: 760px) { .bar .btn .lbl { display: none; } .tab .tt { display: none; } }
+  .stage { flex: 1 1 auto; position: relative; }
+  .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #040711; }
+  .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #64748B; font-size: 14px; pointer-events: none; }
+
+  /* ---------- 나레이션 설정 ---------- */
+  .panel {
+    position: fixed; z-index: 50; top: 62px; right: 14px; width: min(360px, calc(100vw - 28px));
+    background: rgba(8,13,26,0.97); border: 1px solid rgba(251,191,36,0.35); border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.7); padding: 16px 16px 14px; display: none; max-height: calc(100vh - 80px); overflow: auto;
+  }
+  .panel.on { display: block; }
+  .panel h4 { font-size: 14px; font-weight: 700; color: #FDE68A; display: flex; justify-content: space-between; align-items: center; }
+  .panel h4 button { background: none; border: 0; color: #94A3B8; font-size: 18px; line-height: 1; }
+  .panel .row { margin-top: 13px; }
+  .panel .row label { display: flex; justify-content: space-between; font-size: 12.5px; color: #CBD5E1; margin-bottom: 5px; }
+  .panel .row label b { font-family: 'JetBrains Mono', monospace; color: #FBBF24; font-weight: 700; }
+  .panel .row select { width: 100%; height: 34px; border-radius: 9px; background: #0F172A; color: #E2E8F0; border: 1px solid #334155; padding: 0 8px; font-family: inherit; font-size: 13px; }
+  .panel .row input[type=range] { width: 100%; accent-color: #FBBF24; }
+  .chk { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: #CBD5E1; margin-top: 10px; line-height: 1.5; cursor: pointer; }
+  .chk input { margin-top: 3px; accent-color: #FBBF24; }
+  .hint { margin-top: 6px; font-size: 11.5px; color: #64748B; line-height: 1.55; }
+  .actions { margin-top: 14px; display: flex; gap: 8px; }
+  .actions button { flex: 1; height: 34px; border-radius: 9px; font-size: 13px; font-weight: 700; border: 1px solid #334155; background: #0F172A; color: #E2E8F0; }
+  .actions .primary { background: #F59E0B; color: #0B1120; border-color: #F59E0B; }
+
+  #toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 80; background: #27417f; color: #fff; border: 1px solid var(--ca-top); padding: 10px 16px; border-radius: 12px; font-size: 13.5px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+</style>
+</head>
+<body>
+
+<div class="ca-strip" id="caStrip">
+  <span class="dot"></span><b>청암대학교</b><span class="sub">__STRIP_SUB__</span>
+  <span class="sp"></span>
+  <button type="button" id="narrBtnTop" title="나레이션 설정">🔊 <span class="lbl">나레이션</span></button>
+</div>
+
+<section id="home">
+  <div class="eyebrow mono">__EYEBROW__</div>
+  <h1>__HERO_HTML__</h1>
+  <p class="lead">원하는 편을 고르면 재생 화면이 열립니다. 편마다 장면 5개와 직접 조작하는 시뮬레이터가 있고, 장면마다 <b>✍ 필기·메모</b>를 남기고 모르는 단어는 <b>📖 용어</b>로 찾을 수 있습니다.</p>
+  <div class="quick">
+    <button type="button" id="openNotesHome">✍ 내 노트 모아보기</button>
+  </div>
+  <div class="grid" id="cardGrid"></div>
+
+  <details class="prof" id="profBox">
+    <summary>🖊 교수용 · 내용 수정</summary>
+    <div class="row">
+      <label class="sw"><input type="checkbox" id="edOn"> 수정 기능 켜기 <small style="color:#94A3B8">(켜면 각 편 위쪽에 ✏️ 수정 버튼이 나타납니다)</small></label>
+    </div>
+    <div class="row">
+      <button type="button" id="edBake">⬇ 수정본 파일로 저장</button>
+      <button type="button" id="edExp">수정 내보내기</button>
+      <label class="bt">불러오기<input type="file" id="edImp" accept=".json,application/json" hidden></label>
+      <button type="button" id="edClear">모든 수정 지우기</button>
+      <span class="msg" id="edMsg"></span>
+    </div>
+    <div class="counts" id="edCounts"></div>
+    <p class="hint">장면의 제목·배지·설명 카드·자막을 화면에서 바로 고칠 수 있습니다. 고친 내용은 이 브라우저에만 저장되므로, 학생에게는 <b>수정본 파일로 저장</b>으로 만든 새 파일을 나눠 주세요. 음성 나레이션 원고와 3D 그림 속 이름표는 스크립트가 만드는 내용이라 여기서 고칠 수 없습니다.</p>
+  </details>
+
+  <p class="note">인터넷에 연결된 상태에서 크롬 또는 엣지로 열어 주세요. (3D 엔진·글꼴을 온라인에서 불러옵니다)<br>필기와 메모는 이 브라우저에만 저장됩니다. 제출할 때는 <b>내 노트 → ⬇ 노트 파일 저장</b>을 이용하세요.</p>
+  <p class="foot">__ORG__ · <a href="https://www.ca.ac.kr" target="_blank" rel="noopener">www.ca.ac.kr</a></p>
+</section>
+
+<section id="notesView" hidden>
+  <div class="nv">
+    <div class="nv-top">
+      <button type="button" class="nbt" id="notesBack">‹ 처음 화면</button>
+      <h2>✍ 내 노트<small id="notesSum"></small></h2>
+    </div>
+    <div class="nv-tools">
+      <input type="search" id="notesQ" placeholder="메모·장면 제목에서 찾기">
+      <div class="flt" id="notesFlt">
+        <button type="button" data-f="all" aria-pressed="true">전체</button>
+        <button type="button" data-f="star" aria-pressed="false">★ 중요</button>
+        <button type="button" data-f="memo" aria-pressed="false">📝 메모</button>
+        <button type="button" data-f="pen" aria-pressed="false">✏️ 펜</button>
+      </div>
+    </div>
+    <div class="nv-tools">
+      <button type="button" class="nbt pri" id="notesExport">⬇ 노트 파일 저장</button>
+      <button type="button" class="nbt" id="notesBackup">백업(.json)</button>
+      <label class="nbt">불러오기<input type="file" id="notesImport" accept=".json,application/json" hidden></label>
+    </div>
+    <div class="nv-msg" id="notesMsg"></div>
+    <div id="notesBody"></div>
+  </div>
+</section>
+
+<section id="viewer">
+  <div class="bar">
+    <button class="btn" id="homeBtn" title="처음 화면">⌂ <span class="lbl">처음 화면</span></button>
+    <div class="tabs" id="tabBar"></div>
+    <button class="btn" id="prevBtn" title="이전 편">‹ <span class="lbl">이전 편</span></button>
+    <button class="btn" id="nextBtn" title="다음 편"><span class="lbl">다음 편</span> ›</button>
+    <button class="btn" id="notesBtnBar" title="내 노트 모아보기" style="color:#F4DE57;border-color:rgba(244,222,87,.5)">✍ <span class="lbl">내 노트</span></button>
+    <button class="btn" id="narrBtnBar" title="나레이션 설정" style="color:#FDE68A;border-color:rgba(251,191,36,.45)">🔊 <span class="lbl">나레이션</span></button>
+  </div>
+  <div class="stage" id="stage"><div class="loading" id="loading">불러오는 중…</div></div>
+</section>
+
+<div class="panel" id="narrPanel" role="dialog" aria-label="나레이션 설정">
+  <h4>🔊 나레이션 설정 <button id="narrClose" title="닫기">×</button></h4>
+  <div class="row">
+    <label>목소리</label>
+    <select id="nVoice"></select>
+    <div class="hint" id="nVoiceHint"></div>
+  </div>
+  <div class="row"><label>말하기 속도 <b id="nRateV"></b></label><input id="nRate" type="range" min="0.7" max="1.4" step="0.05"></div>
+  <div class="row"><label>음 높이 <b id="nPitchV"></b></label><input id="nPitch" type="range" min="0.8" max="1.2" step="0.05"></div>
+  <div class="row"><label>음량 <b id="nVolV"></b></label><input id="nVol" type="range" min="0.2" max="1" step="0.05"></div>
+  <div class="row"><label>문장 사이 쉼 <b id="nPauseV"></b></label><input id="nPause" type="range" min="0" max="1200" step="50"></div>
+  <label class="chk"><input type="checkbox" id="nWait"> 나레이션을 끝까지 읽은 뒤 다음 장면으로 넘어가기</label>
+  <label class="chk"><input type="checkbox" id="nCaption"> 지금 읽는 문장을 자막 아래에 표시하기</label>
+  <div class="hint">바꾼 설정은 다음 문장부터 바로 적용되고, 이 브라우저에 저장됩니다.</div>
+  <div class="actions">
+    <button id="nReset">기본값</button>
+    <button id="nTest" class="primary">미리 듣기</button>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script type="application/json" id="payload">__PAYLOAD__</script>
+<script>
+  const SERIES = __SERIES__;
+  const EPISODES = __EPISODES__;
+  const PAYLOAD = JSON.parse(document.getElementById('payload').textContent);
+
+  /* ================= 저장소 (막힌 곳에서는 메모리로) ================= */
+  const MEM = {};
+  const store = {
+    get(k) { try { const v = localStorage.getItem(k); if (v != null) return v; } catch (e) {} return Object.prototype.hasOwnProperty.call(MEM, k) ? MEM[k] : null; },
+    set(k, v) { MEM[k] = v; try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { delete MEM[k]; try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function getJSON(k, d) { try { const v = JSON.parse(store.get(k)); return v == null ? d : v; } catch (e) { return d; } }
+  const NK = m => 'mp-notes-v1:' + m;
+  const EK = m => 'mp-edits-v1:' + m;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
+  function dl(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); }
+  function stamp() { const d = new Date(), z = n => (n < 10 ? '0' : '') + n; return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '_' + z(d.getHours()) + z(d.getMinutes()); }
+
+  /* ================= 편 원본 (base64 → HTML) ================= */
+  const decoded = {};
+  function getEpisodeHtml(i) {
+    if (!decoded[i]) {
+      const bin = atob(PAYLOAD[i]);
+      const bytes = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      decoded[i] = new TextDecoder('utf-8').decode(bytes);
+    }
+    return decoded[i];
+  }
+  function b64Utf8(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  /* ================= 나레이션 설정 ================= */
+  const NARR_KEY = '__SERIES_ID__-narration-v1';
+  const NARR_DEFAULTS = { voiceURI: '', rate: 1.0, pitch: 1.0, volume: 1.0, pauseMs: 350, waitForNarration: true, showCaption: true };
+  let narr = Object.assign({}, NARR_DEFAULTS, getJSON(NARR_KEY, {}));
+  window.NarrationSettings = {
+    get: () => Object.assign({}, narr),
+    set: (patch) => { narr = Object.assign(narr, patch); store.set(NARR_KEY, JSON.stringify(narr)); }
+  };
+  (function setupNarrationPanel() {
+    const panel = document.getElementById('narrPanel');
+    const $ = id => document.getElementById(id);
+    const synth = window.speechSynthesis;
+    const rankV = v => (/natural|online|neural/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 3 : 0) + (/yuna|sunhi|injoon|heami|jimin/i.test(v.name) ? 2 : 0);
+    function fillVoices() {
+      const sel = $('nVoice');
+      let list = [];
+      try { list = (synth && synth.getVoices()) || []; } catch (e) {}
+      const ko = list.filter(v => /^ko/i.test(v.lang));
+      sel.innerHTML = '<option value="">자동 선택 (가장 자연스러운 한국어 목소리)</option>' +
+        ko.map(v => `<option value="${esc(v.voiceURI)}">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</option>`).join('');
+      sel.value = ko.some(v => v.voiceURI === narr.voiceURI) ? narr.voiceURI : '';
+      $('nVoiceHint').textContent = !synth ? '이 브라우저는 음성 읽기를 지원하지 않습니다.'
+        : ko.length === 0 ? '한국어 목소리를 찾지 못했습니다. 크롬 또는 엣지에서 열거나, 컴퓨터 설정에서 한국어 음성을 설치해 주세요.'
+        : `사용 가능한 한국어 목소리 ${ko.length}개 · 엣지의 '온라인(Natural)' 목소리가 가장 자연스럽습니다.`;
+    }
+    function render() {
+      $('nRate').value = narr.rate;   $('nRateV').textContent = Number(narr.rate).toFixed(2) + '배';
+      $('nPitch').value = narr.pitch; $('nPitchV').textContent = Number(narr.pitch).toFixed(2);
+      $('nVol').value = narr.volume;  $('nVolV').textContent = Math.round(narr.volume * 100) + '%';
+      $('nPause').value = narr.pauseMs; $('nPauseV').textContent = (narr.pauseMs / 1000).toFixed(2) + '초';
+      $('nWait').checked = !!narr.waitForNarration;
+      $('nCaption').checked = !!narr.showCaption;
+    }
+    const set = (p) => { NarrationSettings.set(p); render(); };
+    $('nVoice').addEventListener('change', e => set({ voiceURI: e.target.value }));
+    $('nRate').addEventListener('input', e => set({ rate: Number(e.target.value) }));
+    $('nPitch').addEventListener('input', e => set({ pitch: Number(e.target.value) }));
+    $('nVol').addEventListener('input', e => set({ volume: Number(e.target.value) }));
+    $('nPause').addEventListener('input', e => set({ pauseMs: Number(e.target.value) }));
+    $('nWait').addEventListener('change', e => set({ waitForNarration: e.target.checked }));
+    $('nCaption').addEventListener('change', e => set({ showCaption: e.target.checked }));
+    $('nReset').addEventListener('click', () => { set(Object.assign({}, NARR_DEFAULTS)); fillVoices(); });
+    $('nTest').addEventListener('click', () => {
+      if (!synth) return;
+      try { synth.cancel(); } catch (e) {}
+      const list = synth.getVoices() || [];
+      const u = new SpeechSynthesisUtterance(__NARR_SAMPLE__);
+      const v = list.find(v => v.voiceURI === narr.voiceURI) || list.filter(v => /^ko/i.test(v.lang)).sort((a, b) => rankV(b) - rankV(a))[0];
+      if (v) u.voice = v;
+      u.lang = (v && v.lang) || 'ko-KR';
+      u.rate = narr.rate; u.pitch = narr.pitch; u.volume = narr.volume;
+      synth.speak(u);
+    });
+    const toggle = (open) => { panel.classList.toggle('on', open); if (open) { fillVoices(); render(); } };
+    ['narrBtnTop', 'narrBtnBar'].forEach(id => $(id).addEventListener('click', () => toggle(!panel.classList.contains('on'))));
+    $('narrClose').addEventListener('click', () => toggle(false));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') toggle(false); });
+    if (synth) { try { synth.onvoiceschanged = () => { if (panel.classList.contains('on')) fillVoices(); }; } catch (e) {} }
+    render();
+  })();
+
+  /* ================= 화면 전환 ================= */
+  const home = document.getElementById('home');
+  const notesView = document.getElementById('notesView');
+  const viewer = document.getElementById('viewer');
+  const caStrip = document.getElementById('caStrip');
+  const stage = document.getElementById('stage');
+  const loading = document.getElementById('loading');
+  const tabBar = document.getElementById('tabBar');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  let current = -1;
+
+  // 미리보기 창(about:srcdoc 등)에서는 주소 변경이 막혀 있으므로 실패해도 무시
+  function setHash(h) {
+    try {
+      if (location.protocol === 'about:') return;
+      history.replaceState(null, '', h || (location.pathname + location.search));
+    } catch (e) {}
+  }
+  function curFrame() { return stage.querySelector('iframe'); }
+  function stopSpeech() {
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    const f = curFrame();
+    if (f) { try { f.contentWindow.speechSynthesis.cancel(); } catch (e) {} }
+  }
+  function closeFrame() { stopSpeech(); const f = curFrame(); if (f) f.remove(); current = -1; }
+  function showOnly(which) {
+    home.hidden = which !== 'home';
+    notesView.hidden = which !== 'notes';
+    caStrip.hidden = which === 'viewer';
+    viewer.classList.toggle('on', which === 'viewer');
+  }
+
+  const grid = document.getElementById('cardGrid');
+  EPISODES.forEach((ep, i) => {
+    const card = document.createElement('button');
+    card.className = 'card';
+    card.style.setProperty('--c1', ep.c1);
+    card.style.setProperty('--c2', ep.c2);
+    card.innerHTML = `
+      <div class="no mono">EPISODE ${ep.no}</div>
+      <h2>${ep.title}</h2>
+      <h3>${ep.sub}</h3>
+      <p>${ep.desc}</p>
+      <div class="tags">${ep.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      <div class="go"><span>${ep.label || (ep.no.replace(/^0/, '') + '편')} 열기 →</span><small class="ncount" data-m="${ep.id}"></small></div>`;
+    card.addEventListener('click', () => openEpisode(i));
+    grid.appendChild(card);
+
+    const tab = document.createElement('button');
+    tab.className = 'tab';
+    tab.style.setProperty('--c1', ep.c1);
+    tab.innerHTML = `<span class="mono">${ep.no}</span><span class="tt"> ${ep.title}</span><span class="long"> · ${ep.sub}</span>`;
+    tab.addEventListener('click', () => openEpisode(i));
+    tabBar.appendChild(tab);
+  });
+
+  function openEpisode(i, fromHash, pending) {
+    if (i < 0 || i >= EPISODES.length) return;
+    closeFrame();
+    loading.style.display = 'flex';
+    const frame = document.createElement('iframe');
+    frame.title = `${EPISODES[i].no}편 ${EPISODES[i].title}`;
+    frame.setAttribute('allow', 'autoplay; fullscreen; clipboard-write');
+    frame.addEventListener('load', () => {
+      loading.style.display = 'none';
+      if (pending && pending.slide) {
+        setTimeout(() => { try { frame.contentWindow.postMessage({ app: 'mp', slide: pending.slide, hl: pending.hl || null, go: true }, '*'); } catch (e) {} }, 300);
+      }
+    });
+    frame.srcdoc = getEpisodeHtml(i);
+    stage.appendChild(frame);
+
+    current = i;
+    showOnly('viewer');
+    [...tabBar.children].forEach((t, k) => t.classList.toggle('active', k === i));
+    try { tabBar.children[i].scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === EPISODES.length - 1;
+    document.title = `${EPISODES[i].no}편 ${EPISODES[i].title} · ${SERIES.title}`;
+    if (!fromHash) setHash('#ep' + (i + 1));
+  }
+  function goHome() {
+    closeFrame();
+    showOnly('home');
+    document.title = SERIES.title + ' · True 3D 포털';
+    setHash('');
+    renderCounts();
+  }
+  function openNotes() {
+    closeFrame();
+    showOnly('notes');
+    document.title = '내 노트 · ' + SERIES.title;
+    setHash('#notes');
+    renderNotes();
+  }
+  document.getElementById('homeBtn').addEventListener('click', goHome);
+  document.getElementById('notesBack').addEventListener('click', goHome);
+  document.getElementById('openNotesHome').addEventListener('click', openNotes);
+  document.getElementById('notesBtnBar').addEventListener('click', openNotes);
+  prevBtn.addEventListener('click', () => openEpisode(current - 1));
+  nextBtn.addEventListener('click', () => openEpisode(current + 1));
+
+  /* ================= 다른 장 검색 색인 ================= */
+  let INDEX = null;
+  function buildIndex() {
+    if (INDEX) return INDEX;
+    INDEX = [];
+    EPISODES.forEach((ep, mi) => {
+      const doc = new DOMParser().parseFromString(getEpisodeHtml(mi), 'text/html');
+      [...doc.querySelectorAll('.scene-slide')].forEach((s, i) => {
+        const t = s.getAttribute('data-title') || ('장면 ' + (i + 1));
+        const text = (s.textContent || '').replace(/\s+/g, ' ').trim();
+        INDEX.push({ m: ep.id, chap: `${ep.no.replace(/^0/, '')}편 ${ep.title}`, i, t, text });
+      });
+    });
+    return INDEX;
+  }
+  function searchAll(terms) {
+    const out = [];
+    if (!terms || !terms.length) return out;
+    buildIndex().forEach(r => {
+      const lo = r.text.toLowerCase();
+      let hit = -1, w = '';
+      terms.forEach(tm => { const p = lo.indexOf(String(tm).toLowerCase()); if (p >= 0 && (hit < 0 || p < hit)) { hit = p; w = tm; } });
+      if (hit < 0) return;
+      const a = Math.max(0, hit - 26), b = Math.min(r.text.length, hit + w.length + 38);
+      const snip = (a > 0 ? '…' : '') + esc(r.text.slice(a, hit)) + '<mark>' + esc(r.text.slice(hit, hit + w.length)) + '</mark>' + esc(r.text.slice(hit + w.length, b)) + (b < r.text.length ? '…' : '');
+      out.push({ m: r.m, chap: r.chap, i: r.i, t: r.t, snip });
+    });
+    return out;
+  }
+
+  /* ================= 메시지 (각 편 ↔ 포털) ================= */
+  function editOn() { return store.get('mp-edit-on') === '1'; }
+  window.addEventListener('message', ev => {
+    const d = ev.data;
+    if (!d || d.app !== 'mp') return;
+    const src = ev.source;
+    const reply = m => { try { src && src.postMessage(m, '*'); } catch (e) {} };
+    if (d.notesGet) reply({ app: 'mp', notesFor: d.notesGet, notes: getJSON(NK(d.notesGet), {}) });
+    if (d.notesPut) { store.set(NK(d.notesPut), JSON.stringify(d.notes || {})); }
+    if (d.editGet) reply({ app: 'mp', editFor: d.editGet, edits: getJSON(EK(d.editGet), {}), editOn: editOn() });
+    if (d.editPut) { store.set(EK(d.editPut), JSON.stringify(d.edits || {})); renderEditBox(); }
+    if (d.editBake) bakeAll();
+    if (d.editExport) exportEdits();
+    if (d.editImport) importEdits(d.editImport);
+    if (d.lookup) reply({ app: 'mp', lookupRes: searchAll(d.lookup), q: d.q });
+    if (d.open) {
+      const i = EPISODES.findIndex(e => e.id === d.open);
+      if (i >= 0) openEpisode(i, false, { slide: d.slide, hl: d.hl });
+    }
+  });
+
+  /* ================= ✍ 내 노트 ================= */
+  const PAL = { ink: '#172033', red: '#d62839', blue: '#1f5fa8', green: '#1f8a4c', hl: 'rgba(255,214,0,.42)' };
+  function headPts(x0, y0, x1, y1, w) { var a = Math.atan2(y1 - y0, x1 - x0), L = 12 + w * 3, s = 0.5; return [x1 - L * Math.cos(a - s), y1 - L * Math.sin(a - s), x1 - L * Math.cos(a + s), y1 - L * Math.sin(a + s)]; }
+  function shapeSVG(st, col) { var p = st.p, x0 = p[0], y0 = p[1], x1 = p[2], y1 = p[3], a = ' fill="none" stroke="' + col + '" stroke-width="' + st.w + '" stroke-linecap="round" stroke-linejoin="round"';
+    if (st.k === 'rect') return '<rect x="' + Math.min(x0, x1) + '" y="' + Math.min(y0, y1) + '" width="' + Math.abs(x1 - x0) + '" height="' + Math.abs(y1 - y0) + '"' + a + '/>';
+    if (st.k === 'ellipse') return '<ellipse cx="' + (x0 + x1) / 2 + '" cy="' + (y0 + y1) / 2 + '" rx="' + Math.abs(x1 - x0) / 2 + '" ry="' + Math.abs(y1 - y0) / 2 + '"' + a + '/>';
+    var d = 'M' + x0 + ' ' + y0 + 'L' + x1 + ' ' + y1; if (st.k === 'arrow') { var h = headPts(x0, y0, x1, y1, st.w); d += 'M' + h[0] + ' ' + h[1] + 'L' + x1 + ' ' + y1 + 'L' + h[2] + ' ' + h[3]; } return '<path d="' + d + '"' + a + '/>'; }
+  function svgOf(strokes) {
+    if (!strokes || !strokes.length) return '';
+    let x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
+    strokes.forEach(s => { for (let j = 0; j < s.p.length; j += 2) { x0 = Math.min(x0, s.p[j]); x1 = Math.max(x1, s.p[j]); y0 = Math.min(y0, s.p[j + 1]); y1 = Math.max(y1, s.p[j + 1]); } });
+    x0 = Math.max(0, x0 - 20); y0 = Math.max(0, y0 - 20); const w = Math.max(120, x1 + 20 - x0), h = Math.max(60, y1 + 20 - y0);
+    return '<svg viewBox="' + x0 + ' ' + y0 + ' ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' + strokes.map(s => {
+      if (s.k) return shapeSVG(s, PAL[s.c] || PAL.ink);
+      const pts = []; for (let j = 0; j < s.p.length; j += 2) pts.push(s.p[j] + ',' + s.p[j + 1]); if (pts.length === 1) pts.push((s.p[0] + .1) + ',' + s.p[1]);
+      return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + (PAL[s.c] || PAL.ink) + '" stroke-width="' + s.w + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }).join('') + '</svg>';
+  }
+  function hasNote(d) { return d && (d.memo || d.star || (d.strokes && d.strokes.length)); }
+  function allNotes() {
+    return EPISODES.map((ep, mi) => {
+      const data = getJSON(NK(ep.id), {});
+      const items = Object.keys(data).map(k => Object.assign({ key: k }, data[k])).filter(hasNote).sort((a, b) => (a.i || 0) - (b.i || 0));
+      return { ep, mi, items };
+    });
+  }
+  function renderCounts() {
+    allNotes().forEach(g => {
+      const el = grid.querySelector(`.ncount[data-m="${g.ep.id}"]`);
+      if (el) el.textContent = g.items.length ? `✍ 노트 ${g.items.length}` : '';
+    });
+  }
+  let nFilter = 'all';
+  function hl(text, q) {
+    const s = esc(text);
+    if (!q) return s;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return s;
+    return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
+  }
+  function renderNotes() {
+    const q = document.getElementById('notesQ').value.trim();
+    const body = document.getElementById('notesBody');
+    let total = 0, html = '';
+    allNotes().forEach(g => {
+      const list = g.items.filter(d => {
+        if (nFilter === 'star' && !d.star) return false;
+        if (nFilter === 'memo' && !d.memo) return false;
+        if (nFilter === 'pen' && !(d.strokes && d.strokes.length)) return false;
+        if (q && ((d.t || '') + ' ' + (d.memo || '')).toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
+        return true;
+      });
+      if (!list.length) return;
+      total += list.length;
+      html += `<div class="chap" style="--c1:${g.ep.c1}"><h3><span>${g.ep.no.replace(/^0/, '')}편 · ${esc(g.ep.title)}</span><small>${list.length}개</small></h3>` +
+        list.map(d => `<div class="it${d.star ? ' star' : ''}"><div class="it-h"><b>장면 ${(d.i || 0) + 1}. ${hl(d.t || '', q)}</b>` +
+          (d.star ? '<span class="badge">★ 중요</span>' : '') +
+          (d.strokes && d.strokes.length ? `<span class="badge pen">✏️ ${d.strokes.length}획</span>` : '') + '</div>' +
+          (d.memo ? `<p>${hl(d.memo, q)}</p>` : '') + svgOf(d.strokes) +
+          `<button type="button" class="go2" data-mi="${g.mi}" data-i="${d.i || 0}">이 장면 열기 →</button></div>`).join('') + '</div>';
+    });
+    document.getElementById('notesSum').textContent = total ? `${total}개` : '';
+    body.innerHTML = html || `<p class="empty">${q || nFilter !== 'all' ? '조건에 맞는 노트가 없습니다.' : '아직 노트가 없습니다.<br>각 편 위쪽의 <b>✍ 내 필기</b>를 눌러 펜으로 쓰거나 메모를 남기면 여기에 장별로 모입니다.'}</p>`;
+  }
+  document.getElementById('notesQ').addEventListener('input', renderNotes);
+  document.getElementById('notesFlt').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    nFilter = b.dataset.f;
+    [...document.querySelectorAll('#notesFlt button')].forEach(x => x.setAttribute('aria-pressed', x === b));
+    renderNotes();
+  });
+  document.getElementById('notesBody').addEventListener('click', e => {
+    const b = e.target.closest('.go2'); if (!b) return;
+    openEpisode(+b.dataset.mi, false, { slide: (+b.dataset.i) + 1 });
+  });
+  document.getElementById('notesExport').addEventListener('click', () => {
+    const groups = allNotes().filter(g => g.items.length);
+    const body = groups.map(g => `<h2>${g.ep.no.replace(/^0/, '')}편 · ${esc(g.ep.title)}</h2>` + g.items.map(d =>
+      `<div class="it${d.star ? ' s' : ''}"><h3>장면 ${(d.i || 0) + 1}. ${esc(d.t || '')}${d.star ? ' <em>★ 중요</em>' : ''}</h3>${d.memo ? '<p>' + esc(d.memo) + '</p>' : ''}${svgOf(d.strokes)}</div>`).join('')).join('') || '<p>노트가 없습니다.</p>';
+    dl('내노트_' + SERIES.slug + '_' + stamp() + '.html', '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>내 노트 · ' + esc(SERIES.title) + '</title><style>body{font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;max-width:820px;margin:24px auto;padding:0 16px;color:#363b4f;line-height:1.6}h1{border-bottom:3px solid #5d8cf5;padding-bottom:6px}h2{margin-top:22px;color:#27417f;font-size:1.1rem}.it{border:1px solid #d5dbe3;border-radius:10px;padding:10px 12px;margin:10px 0;break-inside:avoid}.it.s{border-color:#e0a800}h3{margin:0 0 4px;font-size:1rem}h3 em{font-style:normal;color:#7a5600;font-size:.85rem}p{white-space:pre-wrap;margin:0 0 6px}svg{width:100%;max-height:220px;border:1px solid #e3e7ee;border-radius:8px;background:#fafbfc}.nm{margin:8px 0 18px;font-size:1rem}</style></head><body><h1>내 노트 · ' + esc(SERIES.title) + '</h1><p>' + esc(SERIES.org) + ' · 저장한 날: ' + new Date().toLocaleString('ko-KR') + '</p><p class="nm">학번: ________________ &nbsp; 이름: ________________</p>' + body + '</body></html>', 'text/html');
+    toast('노트 파일을 저장했습니다');
+  });
+  document.getElementById('notesBackup').addEventListener('click', () => {
+    const mods = {}; EPISODES.forEach(ep => { mods[ep.id] = getJSON(NK(ep.id), {}); });
+    dl('내노트_백업_' + stamp() + '.json', JSON.stringify({ app: SERIES.id, v: 1, at: Date.now(), mods }), 'application/json');
+  });
+  document.getElementById('notesImport').addEventListener('change', function () {
+    const f = this.files && this.files[0], inp = this; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const o = JSON.parse(r.result);
+        const mods = o.mods || (o.app && o.notes ? { [o.app]: o.notes } : null);
+        if (!mods) throw 0;
+        let n = 0;
+        Object.keys(mods).forEach(m => {
+          if (!EPISODES.some(e => e.id === m)) return;
+          const cur = getJSON(NK(m), {}), inc = mods[m] || {};
+          Object.keys(inc).forEach(k => { if (!cur[k] || (inc[k].ts || 0) > (cur[k].ts || 0)) { cur[k] = inc[k]; n++; } });
+          store.set(NK(m), JSON.stringify(cur));
+        });
+        document.getElementById('notesMsg').textContent = `불러왔습니다 ✓ (${n}개 반영)`;
+        renderNotes(); renderCounts();
+      } catch (e) { document.getElementById('notesMsg').textContent = '백업 파일을 읽지 못했습니다'; }
+      inp.value = '';
+    };
+    r.readAsText(f);
+  });
+
+  /* ================= 🖊 교수용 · 내용 수정 ================= */
+  __EDITC__
+  const SKIP = '#quiz,.quiz,[data-noedit]';
+  const edOnEl = document.getElementById('edOn');
+  const edMsg = document.getElementById('edMsg');
+  function edStatus(t) { edMsg.textContent = t; clearTimeout(edStatus.t); edStatus.t = setTimeout(() => { edMsg.textContent = ''; }, 3200); }
+  function countEdits(m) { const e = getJSON(EK(m), {}); return Object.keys(e).reduce((n, k) => n + Object.keys(e[k]).length, 0); }
+  function renderEditBox() {
+    edOnEl.checked = editOn();
+    document.getElementById('edCounts').innerHTML = EPISODES.map(ep => `<span>${ep.no.replace(/^0/, '')}편 고친 칸 ${countEdits(ep.id)}개</span>`).join('');
+  }
+  function broadcastEdits() {
+    const f = curFrame(); if (!f || current < 0) return;
+    const m = EPISODES[current].id;
+    try { f.contentWindow.postMessage({ app: 'mp', editFor: m, edits: getJSON(EK(m), {}), editOn: editOn() }, '*'); } catch (e) {}
+  }
+  edOnEl.addEventListener('change', () => {
+    store.set('mp-edit-on', edOnEl.checked ? '1' : '0');
+    const f = curFrame(); if (f) { try { f.contentWindow.postMessage({ app: 'mp', editOnly: edOnEl.checked }, '*'); } catch (e) {} }
+    edStatus(edOnEl.checked ? '수정 기능을 켰습니다. 편을 열면 위쪽에 ✏️ 수정 버튼이 보입니다.' : '수정 기능을 껐습니다.');
+  });
+  function exportEdits() {
+    const mods = {}; EPISODES.forEach(ep => { const e = getJSON(EK(ep.id), {}); if (Object.keys(e).length) mods[ep.id] = e; });
+    if (!Object.keys(mods).length) { toast('아직 고친 칸이 없습니다'); edStatus('아직 고친 칸이 없습니다'); return; }
+    dl('수정내용_' + SERIES.slug + '_' + stamp() + '.json', JSON.stringify({ app: 'edits', v: 1, mods }), 'application/json');
+  }
+  function importEdits(o) {
+    const mods = (o && o.mods) || null;
+    if (!mods) { toast('수정 파일을 읽지 못했습니다'); return; }
+    let n = 0;
+    Object.keys(mods).forEach(m => {
+      if (!EPISODES.some(e => e.id === m)) return;
+      const cur = getJSON(EK(m), {});
+      Object.keys(mods[m]).forEach(sk => { cur[sk] = Object.assign(cur[sk] || {}, mods[m][sk]); n += Object.keys(mods[m][sk]).length; });
+      store.set(EK(m), JSON.stringify(cur));
+    });
+    renderEditBox(); broadcastEdits();
+    toast(`수정 내용을 불러왔습니다 (${n}칸)`); edStatus(`불러왔습니다 · ${n}칸`);
+  }
+  document.getElementById('edExp').addEventListener('click', exportEdits);
+  document.getElementById('edImp').addEventListener('change', function () {
+    const f = this.files && this.files[0], inp = this; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { try { importEdits(JSON.parse(r.result)); } catch (e) { edStatus('파일을 읽지 못했습니다'); } inp.value = ''; };
+    r.readAsText(f);
+  });
+  let clrArm = 0;
+  document.getElementById('edClear').addEventListener('click', function () {
+    const total = EPISODES.reduce((n, ep) => n + countEdits(ep.id), 0);
+    if (!total) { edStatus('지울 수정이 없습니다'); return; }
+    if (!clrArm) { clrArm = 1; this.textContent = '한 번 더 누르면 모두 지움'; setTimeout(() => { clrArm = 0; this.textContent = '모든 수정 지우기'; }, 2500); return; }
+    clrArm = 0; this.textContent = '모든 수정 지우기';
+    EPISODES.forEach(ep => store.del(EK(ep.id)));
+    renderEditBox(); broadcastEdits(); edStatus(`${total}칸의 수정을 모두 지웠습니다`);
+  });
+  function cleanClone(root) {
+    root.querySelectorAll('#stage iframe').forEach(n => n.remove());
+    ['#cardGrid', '#tabBar', '#notesBody', '#edCounts', '#nVoice'].forEach(s => { const n = root.querySelector(s); if (n) n.innerHTML = ''; });
+    const v = root.querySelector('#viewer'); if (v) v.classList.remove('on');
+    const h = root.querySelector('#home'); if (h) h.removeAttribute('hidden');
+    const s = root.querySelector('#caStrip'); if (s) s.removeAttribute('hidden');
+    const nv = root.querySelector('#notesView'); if (nv) nv.setAttribute('hidden', '');
+    const p = root.querySelector('#narrPanel'); if (p) p.classList.remove('on');
+    const t = root.querySelector('#toast'); if (t) { t.setAttribute('hidden', ''); t.textContent = ''; }
+    const l = root.querySelector('#loading'); if (l) l.removeAttribute('style');
+    const pb = root.querySelector('#profBox'); if (pb) pb.removeAttribute('open');
+    const ti = root.querySelector('title'); if (ti) ti.textContent = SERIES.title + ' · True 3D 포털';
+    root.querySelectorAll('input[type=checkbox]').forEach(c => c.removeAttribute('checked'));
+  }
+  function bakeAll() {
+    let ok = 0, miss = 0, chaps = 0;
+    const newPayload = PAYLOAD.slice();
+    EPISODES.forEach((ep, mi) => {
+      const edits = getJSON(EK(ep.id), {});
+      if (!Object.keys(edits).length) return;
+      const doc = new DOMParser().parseFromString(getEpisodeHtml(mi), 'text/html');
+      const cells = [];
+      [...doc.querySelectorAll('.scene-slide')].forEach((s, si) => {
+        const sk = EDITC.key(s, si);
+        EDITC.cands(s, SKIP).forEach((el, idx) => cells.push({ el, sk, idx, o: EDITC.hash(EDITC.norm(el)) }));
+      });
+      let used = 0;
+      Object.keys(edits).forEach(sk => Object.keys(edits[sk]).forEach(idx => {
+        const v = edits[sk][idx];
+        const c = cells.find(x => x.sk === sk && String(x.idx) === String(idx) && x.o === v.o) || cells.find(x => x.sk === sk && x.o === v.o && !x.used);
+        if (c) { EDITC.set(c.el, v.h); c.used = 1; ok++; used++; } else miss++;
+      }));
+      if (used) { newPayload[mi] = b64Utf8('<!DOCTYPE html>\n' + doc.documentElement.outerHTML); chaps++; }
+    });
+    if (!ok) { toast('넣을 수정이 없습니다' + (miss ? ` (맞지 않는 칸 ${miss}개)` : '')); edStatus('넣을 수정이 없습니다'); return; }
+    const clone = document.documentElement.cloneNode(true);
+    cleanClone(clone);
+    clone.querySelector('#payload').textContent = JSON.stringify(newPayload);
+    dl(SERIES.slug + '_통합포털_수정본_' + stamp() + '.html', '<!DOCTYPE html>\n' + clone.outerHTML, 'text/html');
+    const t = `수정본을 만들었습니다 · ${chaps}개 편, ${ok}칸 반영` + (miss ? ` · 못 넣은 칸 ${miss}개` : '');
+    toast(t); edStatus(t);
+  }
+  document.getElementById('edBake').addEventListener('click', bakeAll);
+
+  /* ================= 시작 ================= */
+  renderEditBox();
+  renderCounts();
+  let m = null;
+  try { m = location.hash.match(/^#ep(\d+)$/); } catch (e) {}
+  if (m && +m[1] >= 1 && +m[1] <= EPISODES.length) openEpisode(Number(m[1]) - 1, true);
+  else { try { if (location.hash === '#notes') openNotes(); } catch (e) {} }
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+_test/
+__pycache__/
+examples/*/*.html
+!examples/*/episodes/*.html

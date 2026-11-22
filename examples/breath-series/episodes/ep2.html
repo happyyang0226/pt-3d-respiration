@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>혈액 속 화학 공장: 산-염기 균형과 과호흡 (2편 - True 3D)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts: Noto Sans KR & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #040711;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-deep);
+      color: #F8FAFC;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 글래스모피즘 HUD 패널 */
+    .glass-panel {
+      background: rgba(8, 14, 28, 0.76);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.24);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* WebGL 캔버스 인터랙션 커서 */
+    #threeContainer canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #threeContainer canvas:active {
+      cursor: grabbing;
+    }
+
+    /* 3D 공간 투영 라벨 태그 */
+    .spatial-tag {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#040711]">
+
+  <!-- 상단 시네마틱 헤더 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 z-30">
+    <div class="flex items-center gap-3">
+      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono-tech font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+        TRUE 3D WEBGL · EPISODE 02
+      </span>
+      <div>
+        <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-100">
+          혈액 속 화학 공장: <span class="text-sky-400">산-염기 균형(pH)</span>과 <span class="text-amber-300">과호흡</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 hidden sm:block">좌클릭 드래그: 360° 3D 분자·혈관 회전 · 휠/버튼: 줌 · Shift+드래그: 시점 이동</p>
+      </div>
+    </div>
+
+    <!-- 우측 오디오 및 3D 카메라 리셋 컨트롤 -->
+    <div class="flex items-center gap-2">
+      <button id="resetCameraBtn" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/35 flex items-center gap-1.5 transition cursor-pointer"
+        title="3D 카메라 시점 초기화">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="hidden sm:inline">3D 시점 정렬</span>
+      </button>
+
+      <!-- TTS 상태 표시 -->
+      <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+        <span id="ttsIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="ttsStatusText">한국어 음성 준비됨</span>
+      </div>
+
+      <!-- 음성 켜기/음소거 토글 -->
+      <button id="muteToggleBtn" type="button"
+        class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer">
+        <svg id="iconSoundOn" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        <svg id="iconSoundOff" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+        </svg>
+        <span id="muteBtnLabel">음성 ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 16:9 3D WebGL 애니메이션 무대 -->
+  <main class="flex-1 flex flex-col items-center justify-center p-2.5 sm:p-4 md:p-5">
+    <div class="w-full max-w-6xl bg-[#060A15] border border-slate-800/90 rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col relative">
+      
+      <!-- 챕터 네비게이션 탭 -->
+      <div class="grid grid-cols-5 border-b border-slate-800/90 bg-slate-950/90 text-[11px] sm:text-xs z-20">
+        <button data-scene="0" class="scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer">
+          01. 산소·ATP와 CO₂
+        </button>
+        <button data-scene="1" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          02. 혈액 산-염기 완충
+        </button>
+        <button data-scene="2" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          03. 과호흡과 알칼리화
+        </button>
+        <button data-scene="3" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          04. 알부민·칼슘 흡착
+        </button>
+        <button data-scene="4" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          05. 혈액 pH 시뮬레이터
+        </button>
+      </div>
+
+      <!-- 16:9 Three.js 3D 뷰포트 컨테이너 -->
+      <div id="viewportContainer" class="relative w-full aspect-video min-h-[460px] sm:min-h-[540px] bg-[#040711] overflow-hidden">
+        
+        <!-- Three.js WebGL 렌더링 타겟 -->
+        <div id="threeContainer" class="w-full h-full"></div>
+
+        <!-- 3D 좌표 투영 공간 라벨 레이어 -->
+        <div id="spatialLabelsLayer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+        <!-- 시작 오버레이 -->
+        <div id="startOverlay" class="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-400/25 to-amber-400/15 border border-indigo-400/50 flex items-center justify-center mb-4 shadow-[0_0_35px_rgba(99,102,241,0.4)]">
+            <svg class="w-8 h-8 text-indigo-300" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <span class="text-xs font-mono-tech tracking-widest text-indigo-400 uppercase mb-2">Episode 02 · Blood Chemistry & Ion Dynamics</span>
+          <h2 class="text-xl sm:text-3xl font-black text-white mb-3 tracking-tight">
+            혈액 속 화학 공장: 산-염기 균형과 과호흡
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 max-w-xl mb-6 leading-relaxed">
+            폐포와 모세혈관 사이에서 일어나는 <span class="text-sky-400 font-semibold">이산화탄소(CO₂) 배출</span>과 혈액 pH 조절 원리, 
+            그리고 과호흡 시 <span class="text-indigo-300 font-semibold">알부민 단백질</span>이 <span class="text-amber-300 font-semibold">유리 칼슘 이온(Ca²⁺)</span>을 붙잡아 
+            손발 저림을 유발하는 분자생리학적 메커니즘을 3D로 탐험하세요.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="startWithVoiceBtn" type="button"
+              class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-amber-500/30 flex items-center gap-2 transition transform hover:scale-105 cursor-pointer">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              음성 나레이션과 함께 3D 시작
+            </button>
+            <button id="startSilentBtn" type="button"
+              class="px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition cursor-pointer">
+              자막만으로 보기
+            </button>
+          </div>
+        </div>
+
+        <!-- 좌측 상단: 씬 타이틀 & 3D 카메라 인디케이터 -->
+        <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[60%]">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl glass-panel">
+            <span id="hudSceneNum" class="text-xs font-mono-tech font-bold text-amber-400">SCENE 01</span>
+            <span class="text-slate-600">|</span>
+            <span id="hudSceneTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">산소(ATP) 생성과 이산화탄소(CO₂)의 역할</span>
+          </div>
+          <div id="hudSubBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-400/40 text-[11px] text-sky-200 w-fit backdrop-blur-sm">
+            <span>폐포-모세혈관 가스 교환 (Alveolar Gas Exchange)</span>
+          </div>
+          <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-950/70 text-[10px] font-mono-tech text-slate-400 w-fit">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span id="hudCameraInfo">3D CAM: ALVEOLUS & CAPILLARY CROSS-SECTION</span>
+          </div>
+        </div>
+
+        <!-- 우측 상단: 3D 줌 컨트롤 바 & 생체 혈액 화학 HUD -->
+        <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end gap-2">
+          <!-- 줌 컨트롤 바 -->
+          <div class="glass-panel rounded-xl px-2 py-1.5 flex items-center gap-1 pointer-events-auto shadow-lg">
+            <button id="zoomOutBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 축소 (−)">
+              −
+            </button>
+            <span id="zoomLevelLabel" class="px-2 min-w-[3.2rem] text-center font-mono-tech text-xs font-bold text-sky-300 select-none">
+              100%
+            </span>
+            <button id="zoomInBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 확대 (+)">
+              +
+            </button>
+            <div class="w-px h-4 bg-slate-700/80 mx-0.5"></div>
+            <button id="hudResetViewBtn" type="button"
+              class="px-2 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/30 flex items-center gap-1 text-[11px] font-medium transition active:scale-95 cursor-pointer"
+              title="3D 카메라 각도 및 거리 초기화 (더블클릭)">
+              <span>↺</span>
+              <span class="hidden sm:inline">초기화</span>
+            </button>
+          </div>
+
+          <!-- 혈액 산-염기 & 이온 텔레메트리 HUD -->
+          <div class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-48 sm:w-64 pointer-events-none">
+            <div class="text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
+              <span>BLOOD GAS & ION HUD</span>
+              <span id="telemetryStateLabel" class="text-emerald-400 font-bold">NORMAL pH</span>
+            </div>
+
+            <!-- 동맥혈 pH 수치 -->
+            <div class="flex items-baseline justify-between mb-1.5">
+              <span class="text-[11px] text-slate-300">동맥혈 pH</span>
+              <div class="font-mono-tech">
+                <span id="hudPhVal" class="text-base sm:text-lg font-bold text-emerald-400">7.40</span>
+                <span id="hudPhTag" class="text-[10px] text-slate-400 ml-1">중성(정상)</span>
+              </div>
+            </div>
+
+            <!-- PaCO2 (이산화탄소 분압) -->
+            <div class="mb-2">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">혈중 CO₂ 분압</span>
+                <span id="hudCo2Val" class="font-mono-tech font-bold text-sky-300">40 mmHg</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudCo2Bar" class="h-full bg-gradient-to-r from-sky-400 to-indigo-400 transition-all duration-150" style="width: 55%;"></div>
+              </div>
+            </div>
+
+            <!-- 활성 유리 칼슘 (Ionized Ca2+) 농도 -->
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">활성 유리 칼슘 (Ca²⁺)</span>
+                <span id="hudCaVal" class="font-mono-tech font-bold text-amber-300">100% (안정)</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudCaBar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-150" style="width: 92%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 좌측 플로팅 해부·생화학 콜아웃 카드 -->
+        <div id="sceneFloatingInfo" class="hidden md:flex flex-col gap-2 absolute left-4 top-28 z-20 w-64 glass-panel rounded-xl p-3.5 pointer-events-none transition-all duration-300">
+          <div id="floatingCardTitle" class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span>호흡의 이중 사명: ATP & pH</span>
+          </div>
+          <p id="floatingCardBody" class="text-[11px] text-slate-300 leading-relaxed">
+            호흡은 세포의 미토콘드리아에서 에너지(ATP)를 만드는 산소(O₂)를 공급할 뿐만 아니라, 대사 부산물인 이산화탄소(CO₂)를 배출해 혈액의 산도를 정밀하게 조율합니다.
+          </p>
+        </div>
+
+        <!-- SCENE 4 전용: 알부민-칼슘 결합 3단계 요약 카드 -->
+        <div id="scene4ChemSummary" class="hidden absolute right-4 bottom-24 sm:bottom-28 z-20 glass-panel rounded-xl p-3 w-64 sm:w-72 pointer-events-none">
+          <div class="text-[11px] font-bold text-amber-300 mb-1.5 border-b border-slate-800 pb-1">
+            호흡성 알칼리증 → 신경 과흥분 연쇄
+          </div>
+          <ul class="text-[11px] text-slate-200 space-y-1">
+            <li class="flex justify-between"><span class="text-sky-300 font-semibold">1. CO₂ 과다 배출</span><span>혈중 탄산(H₂CO₃) 감소</span></li>
+            <li class="flex justify-between"><span class="text-indigo-300 font-semibold">2. 혈액 알칼리화</span><span>pH 7.55↑ 상승</span></li>
+            <li class="flex justify-between"><span class="text-purple-300 font-semibold">3. 알부민 H⁺ 해리</span><span>음전하(-) 결합 부위 노출</span></li>
+            <li class="flex justify-between"><span class="text-amber-300 font-semibold">4. 유리 Ca²⁺ 흡착</span><span>혈장 내 활성 칼슘 급감</span></li>
+            <li class="flex justify-between"><span class="text-rose-400 font-semibold">5. Na⁺ 채널 탈억제</span><span>손발 저림·어지럼증 유발</span></li>
+          </ul>
+        </div>
+
+        <!-- SCENE 5 전용: 인터랙티브 혈액 산-염기 & 호흡량 시뮬레이터 -->
+        <div id="simulatorControls" class="hidden absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-3xl glass-panel rounded-2xl p-3 sm:p-3.5">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <!-- 호흡 상태 프리셋 -->
+            <div class="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+              <span class="text-[11px] font-semibold text-slate-400 mr-1">호흡 상태 선택:</span>
+              <button type="button" data-preset="normal" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-400/60 transition cursor-pointer">
+                정상 호흡 (pH 7.40)
+              </button>
+              <button type="button" data-preset="hyper" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                과호흡 유발 (pH 7.58 · 알칼리화)
+              </button>
+              <button type="button" data-preset="bag" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                느린 호기/CO₂ 보존 (회복)
+              </button>
+            </div>
+
+            <!-- 실시간 CO2 배출량 슬라이더 -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-center">
+              <span class="text-[11px] text-slate-300 whitespace-nowrap">호흡 속도:</span>
+              <input id="ventilationSlider" type="range" min="20" max="100" value="42"
+                class="w-28 sm:w-32 accent-amber-400 cursor-pointer" />
+              <span id="ventilationRateText" class="text-[11px] font-mono-tech font-bold text-amber-300 w-12 text-right">14회/분</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 시네마틱 자막 오버레이 -->
+        <div class="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl pointer-events-none">
+          <div class="bg-slate-950/90 border border-slate-800/90 backdrop-blur-md rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-center shadow-2xl">
+            <p id="subtitleText" class="text-xs sm:text-sm md:text-base font-medium text-slate-100 leading-relaxed">
+              시작 버튼을 누르면 혈액 속 산-염기 균형과 알부민-칼슘 이온의 3D 분자 애니메이션이 재생됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 플레이어 타임라인 및 컨트롤 바 -->
+      <div class="bg-slate-950 border-t border-slate-800/90 px-4 sm:px-6 py-3 flex flex-col gap-2.5 z-20">
+        <!-- 프로그레스 바 -->
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="sceneProgressBar" class="h-full bg-gradient-to-r from-sky-400 via-indigo-400 to-amber-400 transition-all duration-150" style="width: 0%;"></div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <!-- 좌측 재생 컨트롤 -->
+          <div class="flex items-center gap-2">
+            <button id="prevSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="이전 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+
+            <button id="playPauseBtn" type="button"
+              class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer">
+              <svg id="iconPlay" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="iconPause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span id="playPauseLabel">재생</span>
+            </button>
+
+            <button id="nextSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="다음 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            <button id="replayNarrationBtn" type="button"
+              class="ml-1 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="현재 장면 다시 듣기">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <span class="hidden sm:inline">다시 듣기</span>
+            </button>
+          </div>
+
+          <!-- 우측 시리즈 예고 & 카운터 -->
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="hidden md:inline">시리즈 다음 편: <strong class="text-slate-300">3편 뇌를 씻어내는 펌프 (뇌척수액 정화)</strong></span>
+            <span class="font-mono-tech font-bold text-slate-200 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">
+              <span id="currentSceneCounter">1</span> / 5
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * 2편: 혈액 속 화학 공장 — 산-염기 균형과 과호흡 (True 3D Three.js Engine)
+     * - 폐포(Alveolus)와 모세혈관(Capillary) 단면 3D 구조 및 가스 교환 입자
+     * - 혈중 CO2 + H2O ⇄ H2CO3 ⇄ H+ + HCO3- 산-염기 완충 시스템 시각화
+     * - 알부민(Albumin) 거대 단백질 3D 도메인 & H+ 방출 → 유리 Ca2+ 결합 시뮬레이션
+     * - 말초 신경 축삭(Peripheral Axon)의 나트륨 채널 탈억제 및 손발 저림 스파크
+     * =========================================================================
+     */
+
+    const SCENES = [
+      {
+        id: 0,
+        num: "SCENE 01",
+        title: "산소(ATP) 생성과 이산화탄소(CO₂)의 역할",
+        badgeText: "폐포-모세혈관 가스 교환 (O₂ 유입 & CO₂ 배출)",
+        badgeClass: "bg-sky-500/20 border-sky-400/40 text-sky-200",
+        camInfo: "3D CAM: ALVEOLUS-CAPILLARY INTERFACE",
+        cameraTarget: { theta: -0.25, phi: 1.42, radius: 13.0, targetX: 0, targetY: 0.3, targetZ: 0 },
+        cardTitle: "호흡의 두 가지 핵심 임무",
+        cardColor: "text-sky-300",
+        cardBody: "호흡은 미토콘드리아가 에너지 화폐(ATP)를 생산하도록 산소(O₂)를 공급하는 동시에, 세포 대사의 결과물인 이산화탄소(CO₂)를 외부로 배출합니다.",
+        durationMs: 14500,
+        subtitleHtml: "호흡의 첫 번째 목적은 <span class='text-sky-400 font-bold'>산소(O₂)</span>를 받아들여 생체 에너지 <span class='text-emerald-400 font-bold'>ATP</span>를 생성하는 것이고, 두 번째는 혈액에 쌓인 <span class='text-indigo-300 font-bold'>이산화탄소(CO₂)</span>를 배출하는 것입니다.",
+        narrationText: "호흡의 가장 기본적인 목적은 산소를 받아들여 우리 몸의 모든 에너지 대사에 필수적인 에이티피를 생성하는 것입니다. 하지만 그에 못지않게 중요한 역할이 바로 우리 몸에 쌓인 이산화탄소를 적절히 배출하는 일입니다."
+      },
+      {
+        id: 1,
+        num: "SCENE 02",
+        title: "혈액 속 산-염기 균형 (pH 7.40 조절기)",
+        badgeText: "중탄산염 완충계 (CO₂ + H₂O ⇄ H⁺ + HCO₃⁻)",
+        badgeClass: "bg-emerald-500/20 border-emerald-400/40 text-emerald-200",
+        camInfo: "3D CAM: BLOODSTREAM BUFFERING SYSTEM",
+        cameraTarget: { theta: 0.15, phi: 1.48, radius: 11.2, targetX: 0, targetY: -0.4, targetZ: 0 },
+        cardTitle: "이산화탄소는 혈액의 천연 산(Acid)",
+        cardColor: "text-emerald-300",
+        cardBody: "혈액 속 이산화탄소는 물과 결합해 탄산(H₂CO₃)이 되었다가 수소 이온(H⁺)을 내놓습니다. 따라서 호흡으로 CO₂ 배출량을 조절하면 혈액의 산도와 염기도(pH 7.40)가 정밀하게 유지됩니다.",
+        durationMs: 16000,
+        subtitleHtml: "혈액 속 <span class='text-indigo-300 font-bold'>이산화탄소(CO₂)</span>는 수소 이온(H⁺)을 만들어내는 산성 물질로 작용하며, 호흡 속도를 통해 혈액의 <span class='text-emerald-400 font-bold'>산성과 염기성 농도(pH 7.40)</span>를 정밀하게 조절합니다.",
+        narrationText: "혈액 속에 녹아 있는 이산화탄소는 물과 만나 수소 이온을 만들어내는 산성 물질로 작용합니다. 따라서 호흡을 통해 이산화탄소를 얼마나 내보내느냐에 따라, 우리 혈액의 산성과 염기성 농도가 정밀하게 조절됩니다."
+      },
+      {
+        id: 2,
+        num: "SCENE 03",
+        title: "과호흡과 혈액의 알칼리화 (호흡성 알칼리증)",
+        badgeText: "CO₂ 과다 배출 → 수소 이온(H⁺) 급감 · pH 상승",
+        badgeClass: "bg-indigo-500/20 border-indigo-400/45 text-indigo-200",
+        camInfo: "3D CAM: HYPERVENTILATION · ALKALOSIS SHIFT",
+        cameraTarget: { theta: -0.35, phi: 1.35, radius: 10.5, targetX: 0, targetY: 0.1, targetZ: 0 },
+        cardTitle: "숨을 너무 빨리·많이 쉬면 생기는 일",
+        cardColor: "text-indigo-300",
+        cardBody: "과호흡으로 이산화탄소가 과다 배출되면 혈액 내 산성(수소 이온, H⁺) 수치가 급격히 낮아지면서, 혈액이 정상 범위를 벗어나 알칼리성(pH 7.55 이상)으로 기울어집니다.",
+        durationMs: 15500,
+        subtitleHtml: "만약 <span class='text-rose-400 font-bold'>과호흡</span>으로 이산화탄소가 과다 배출되면 혈중 <span class='text-sky-300 font-bold'>수소 이온(H⁺)</span> 농도가 급격히 낮아지면서, 혈액이 점점 <span class='text-indigo-300 font-bold'>알칼리성(염기성)</span>으로 변하게 됩니다.",
+        narrationText: "만약 긴장이나 공황 등으로 과호흡을 하게 되면 이산화탄소가 필요 이상으로 과다 배출됩니다. 그러면 혈액 속 산성도를 유지하던 수소 이온 수치가 급격히 낮아지면서, 우리 혈액이 점점 알칼리성으로 기울어지게 됩니다."
+      },
+      {
+        id: 3,
+        num: "SCENE 04",
+        title: "알부민 단백질과 유리 칼슘 이온의 결합 메커니즘",
+        badgeText: "알부민 H⁺ 해리 → 유리 Ca²⁺ 포획 → 신경 과흥분",
+        badgeClass: "bg-amber-500/20 border-amber-400/45 text-amber-200",
+        camInfo: "3D CAM: ALBUMIN MOLECULAR MACRO ZOOM",
+        cameraTarget: { theta: 0.28, phi: 1.32, radius: 7.6, targetX: 0.2, targetY: -0.55, targetZ: 0.2 },
+        cardTitle: "손발 저림과 어지럼증의 분자적 원인",
+        cardColor: "text-amber-300",
+        cardBody: "혈액이 알칼리화되면 알부민 단백질에 붙어 있던 수소 이온(H⁺)이 떨어져 나가고, 그 빈자리에 자유롭게 떠돌던 유리 칼슘 이온(Ca²⁺)이 결합합니다. 활성 칼슘이 부족해지면 신경세포막이 불안정해져 손발 저림과 경련이 발생합니다.",
+        durationMs: 19500,
+        subtitleHtml: "혈액이 알칼리화되면 <span class='text-purple-300 font-bold'>알부민 단백질</span>에서 수소 이온(H⁺)이 떨어져 나가고, 그 빈자리에 <span class='text-amber-300 font-bold'>유리 칼슘 이온(Ca²⁺)</span>이 결합해 활성 칼슘이 부족해지면서 <span class='text-rose-400 font-bold'>신경 과흥분(손발 저림)</span>이 나타납니다.",
+        narrationText: "혈액이 알칼리성이 되면, 혈장 속 알부민 단백질에 붙어 있던 수소 이온이 떨어져 나가면서 그 빈자리에 자유롭게 떠돌던 칼슘 이온이 결합하게 됩니다. 이로 인해 신경과 근육을 안정시키는 활성 상태의 유리 칼슘 농도가 급격히 낮아지면서, 신경이 과민해져 손발 저림과 어지럼증이 나타나는 것입니다."
+      },
+      {
+        id: 4,
+        num: "SCENE 05",
+        title: "인터랙티브 3D 혈액 산-염기 & 이온 시뮬레이터",
+        badgeText: "호흡 속도 조절 → pH · 알부민 · 유리 칼슘 실시간 반응",
+        badgeClass: "bg-emerald-500/25 border-emerald-400/50 text-emerald-200",
+        camInfo: "3D CAM: INTERACTIVE MOLECULAR LAB · DRAG TO ORBIT",
+        cameraTarget: { theta: 0.12, phi: 1.38, radius: 9.8, targetX: 0, targetY: -0.35, targetZ: 0 },
+        cardTitle: "직접 호흡 속도를 바꿔 분자 변화 관찰",
+        cardColor: "text-emerald-300",
+        cardBody: "하단에서 '과호흡 유발'을 누르거나 슬라이더를 올려보세요. CO₂가 빠져나가며 알부민이 유리 칼슘(황금 구체)을 흡수하고, 하단 말초 신경에 붉은 과흥분 스파크가 튀는 과정을 실시간으로 확인할 수 있습니다.",
+        durationMs: 999999,
+        subtitleHtml: "하단의 <span class='text-amber-300 font-bold'>호흡 상태 버튼</span>이나 <span class='text-sky-300 font-bold'>호흡 속도 슬라이더</span>를 조절하며, 혈액 pH 변화에 따른 알부민과 유리 칼슘의 결합 및 신경 반응을 3D로 체험해 보세요.",
+        narrationText: "이제 직접 호흡 속도를 조절해 볼 차례입니다. 하단에서 과호흡 유발 버튼을 누르거나 슬라이더를 높여 보세요. 이산화탄소가 빠르게 배출되면서 알부민 단백질이 유리 칼슘 이온을 흡수하고, 말초 신경이 과흥분하는 과정을 입체적으로 확인할 수 있습니다."
+      }
+    ];
+
+    // 전역 상태 객체
+    const state = {
+      currentScene: 0,
+      isPlaying: false,
+      hasStarted: false,
+      isMuted: false,
+      sceneElapsedMs: 0,
+      lastFrameTime: performance.now(),
+
+      // 3D 구면 궤도 카메라 상태
+      cam: {
+        theta: -0.25,
+        phi: 1.42,
+        radius: 13.0,
+        targetX: 0,
+        targetY: 0.3,
+        targetZ: 0,
+
+        userThetaOffset: 0,
+        userPhiOffset: 0,
+        userZoomMult: 1.0,
+        targetUserZoomMult: 1.0,
+        userPanX: 0,
+        userPanY: 0,
+        targetUserPanX: 0,
+        targetUserPanY: 0,
+
+        dragMode: null,
+        dragStartX: 0,
+        dragStartY: 0,
+        pinchStartDist: 0,
+        pinchStartZoom: 1.0,
+        pinchCenterX: 0,
+        pinchCenterY: 0
+      },
+
+      // 생화학·생리학 물리 상태
+      chem: {
+        ventilationRate: 0.35,   // 0.15(느린 호흡) ~ 1.0(심한 과호흡)
+        targetVentRate: 0.35,
+        breathPhase: 0,
+        co2Level: 40,            // 정상 40 mmHg -> 과호흡 시 22 mmHg
+        bloodPh: 7.40,           // 정상 7.40 -> 과호흡 시 7.58
+        alkalosisFactor: 0.0,    // 0(정상 pH 7.40) ~ 1(심한 호흡성 알칼리증)
+        freeCalciumRatio: 1.0,   // 1.0(100% 활성 유리 칼슘) ~ 0.38(알부민에 결합되어 감소)
+        nerveExcitability: 0.15  // 0.15(안정) ~ 1.0(손발 저림/과흥분)
+      },
+
+      simPreset: 'normal'
+    };
+
+    // DOM 참조
+    const dom = {
+      viewport: document.getElementById('viewportContainer'),
+      threeContainer: document.getElementById('threeContainer'),
+      spatialLabelsLayer: document.getElementById('spatialLabelsLayer'),
+      startOverlay: document.getElementById('startOverlay'),
+      startWithVoiceBtn: document.getElementById('startWithVoiceBtn'),
+      startSilentBtn: document.getElementById('startSilentBtn'),
+      resetCameraBtn: document.getElementById('resetCameraBtn'),
+      zoomInBtn: document.getElementById('zoomInBtn'),
+      zoomOutBtn: document.getElementById('zoomOutBtn'),
+      zoomLevelLabel: document.getElementById('zoomLevelLabel'),
+      hudResetViewBtn: document.getElementById('hudResetViewBtn'),
+      muteToggleBtn: document.getElementById('muteToggleBtn'),
+      iconSoundOn: document.getElementById('iconSoundOn'),
+      iconSoundOff: document.getElementById('iconSoundOff'),
+      muteBtnLabel: document.getElementById('muteBtnLabel'),
+      ttsStatusText: document.getElementById('ttsStatusText'),
+      ttsIndicatorDot: document.getElementById('ttsIndicatorDot'),
+
+      sceneTabs: document.querySelectorAll('.scene-tab'),
+      hudSceneNum: document.getElementById('hudSceneNum'),
+      hudSceneTitle: document.getElementById('hudSceneTitle'),
+      hudSubBadge: document.getElementById('hudSubBadge'),
+      hudCameraInfo: document.getElementById('hudCameraInfo'),
+
+      telemetryStateLabel: document.getElementById('telemetryStateLabel'),
+      hudPhVal: document.getElementById('hudPhVal'),
+      hudPhTag: document.getElementById('hudPhTag'),
+      hudCo2Val: document.getElementById('hudCo2Val'),
+      hudCo2Bar: document.getElementById('hudCo2Bar'),
+      hudCaVal: document.getElementById('hudCaVal'),
+      hudCaBar: document.getElementById('hudCaBar'),
+
+      floatingCardTitle: document.getElementById('floatingCardTitle'),
+      floatingCardBody: document.getElementById('floatingCardBody'),
+      scene4ChemSummary: document.getElementById('scene4ChemSummary'),
+      simulatorControls: document.getElementById('simulatorControls'),
+      ventilationSlider: document.getElementById('ventilationSlider'),
+      ventilationRateText: document.getElementById('ventilationRateText'),
+
+      subtitleText: document.getElementById('subtitleText'),
+      sceneProgressBar: document.getElementById('sceneProgressBar'),
+      prevSceneBtn: document.getElementById('prevSceneBtn'),
+      playPauseBtn: document.getElementById('playPauseBtn'),
+      iconPlay: document.getElementById('iconPlay'),
+      iconPause: document.getElementById('iconPause'),
+      playPauseLabel: document.getElementById('playPauseLabel'),
+      nextSceneBtn: document.getElementById('nextSceneBtn'),
+      replayNarrationBtn: document.getElementById('replayNarrationBtn'),
+      currentSceneCounter: document.getElementById('currentSceneCounter'),
+      presetBtns: document.querySelectorAll('.sim-preset-btn')
+    };
+
+    /**
+     * =========================================================================
+     * Three.js 3D 씬 구축: 폐포 · 모세혈관 · 알부민 단백질 · 칼슘/수소 이온 · 말초신경
+     * =========================================================================
+     */
+    let scene3D, camera3D, renderer3D;
+    const lab3D = {
+      rootGroup: null,
+      alveolusGroup: null,
+      alveolusMesh: null,
+      alveolusMat: null,
+      vesselTube: null,
+      vesselMat: null,
+      rbcList: [],           // 적혈구 3D 원반 메시 배열
+      o2Particles: [],       // 산소(O2) 입자 (폐포 -> 혈관)
+      co2Particles: [],      // 이산화탄소(CO2) 입자 (혈관 -> 폐포 배출)
+      albuminGroup: null,    // 중앙 거대 알부민 단백질 3D 복합체
+      albuminCoreMat: null,
+      bindingPockets: [],    // 알부민의 8개 음전하(-) 결합 포켓 + H+ / Ca2+ 상태
+      freeCaParticles: [],   // 혈장 내 자유 유영 유리 칼슘(Ca2+) 이온
+      nerveGroup: null,      // 하단 말초 신경 축삭(Peripheral Nerve Axon)
+      nerveMat: null,
+      nerveSparks: [],       // 신경 과흥분(손발 저림) 전기 스파크
+      ambientStars: null
+    };
+
+    // 3D 공간 좌표 투영 라벨
+    const spatialLabelNodes = {};
+    const SPATIAL_LABEL_DEFS = [
+      { id: 'alveolus',  scenes: [0, 1, 2],    text: '폐포낭 (Alveolus)',               color: '#38BDF8', pos: new THREE.Vector3(-2.1, 2.35, 0.2) },
+      { id: 'o2Flow',    scenes: [0],          text: 'O₂ 유입 → ATP 에너지 생성',      color: '#34D399', pos: new THREE.Vector3(-1.35, 1.05, 0.75) },
+      { id: 'co2Out',    scenes: [0, 1, 2],    text: 'CO₂ 배출 (산도 조절기)',          color: '#A5B4FC', pos: new THREE.Vector3(1.55, 1.55, 0.55) },
+      { id: 'vessel',    scenes: [1, 2],       text: '모세혈관 (혈액 산-염기 완충)',     color: '#FDA4AF', pos: new THREE.Vector3(-2.65, -0.35, 0.65) },
+      { id: 'albumin',   scenes: [2, 3, 4],    text: '알부민 단백질 (Albumin)',         color: '#C084FC', pos: new THREE.Vector3(0.15, -0.1, 0.95) },
+      { id: 'freeCa',    scenes: [3, 4],       text: '활성 유리 칼슘 (Ca²⁺)',           color: '#FCD34D', pos: new THREE.Vector3(1.85, -0.65, 0.6) },
+      { id: 'nerveAxon', scenes: [3, 4],       text: '말초 신경세포막 (손발 저림/경련)', color: '#FB7185', pos: new THREE.Vector3(0.0, -2.55, 0.55) }
+    ];
+
+    function initThree3D() {
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+
+      scene3D = new THREE.Scene();
+      scene3D.fog = new THREE.FogExp2(0x040711, 0.03);
+
+      camera3D = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+
+      renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer3D.setSize(width, height);
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer3D.toneMappingExposure = 1.2;
+      dom.threeContainer.appendChild(renderer3D.domElement);
+
+      // 3점 시네마틱 조명
+      const ambientLight = new THREE.AmbientLight(0x1e293b, 1.45);
+      scene3D.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xe0f2fe, 1.7);
+      keyLight.position.set(5, 8, 8);
+      scene3D.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x818cf8, 1.25);
+      rimLight.position.set(-7, 3, -7);
+      scene3D.add(rimLight);
+
+      const warmBottomLight = new THREE.DirectionalLight(0xf59e0b, 0.65);
+      warmBottomLight.position.set(0, -7, 4);
+      scene3D.add(warmBottomLight);
+
+      // 공간 부유 입자
+      const starCount = 240;
+      const starGeo = new THREE.BufferGeometry();
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 22;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 18;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 22;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.08, transparent: true, opacity: 0.4 });
+      lab3D.ambientStars = new THREE.Points(starGeo, starMat);
+      scene3D.add(lab3D.ambientStars);
+
+      // 3D 모델 조립
+      lab3D.rootGroup = new THREE.Group();
+      scene3D.add(lab3D.rootGroup);
+
+      buildAlveolusAndCapillary3D();
+      buildGasAndRBC3D();
+      buildAlbuminAndIons3D();
+      buildPeripheralNerve3D();
+      initSpatialLabels();
+
+      window.addEventListener('resize', onViewportResize);
+    }
+
+    function onViewportResize() {
+      if (!renderer3D || !camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+      camera3D.aspect = width / height;
+      camera3D.updateProjectionMatrix();
+      renderer3D.setSize(width, height);
+    }
+
+    /**
+     * (A) 상단 3D 폐포낭(Alveolus) & 중단 반투명 모세혈관(Capillary Vessel)
+     */
+    function buildAlveolusAndCapillary3D() {
+      // 1. 상단 폐포낭 클러스터 (Y = +2.15)
+      lab3D.alveolusGroup = new THREE.Group();
+      lab3D.alveolusGroup.position.set(0, 2.15, 0);
+
+      lab3D.alveolusMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.35,
+        roughness: 0.25,
+        clearcoat: 0.85,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false
+      });
+
+      const mainSacGeo = new THREE.SphereGeometry(1.38, 32, 24);
+      mainSacGeo.scale(1.35, 0.82, 0.95);
+      lab3D.alveolusMesh = new THREE.Mesh(mainSacGeo, lab3D.alveolusMat);
+      lab3D.alveolusGroup.add(lab3D.alveolusMesh);
+
+      // 주변 소폐포(Alveolar Sacs) 3개
+      [
+        { x: -1.55, y: 0.15, z: -0.25, r: 0.85 },
+        { x: 1.55, y: 0.15, z: -0.25, r: 0.85 },
+        { x: 0, y: 0.72, z: -0.45, r: 0.78 }
+      ].forEach(s => {
+        const sub = new THREE.Mesh(new THREE.SphereGeometry(s.r, 20, 16), lab3D.alveolusMat);
+        sub.position.set(s.x, s.y, s.z);
+        lab3D.alveolusGroup.add(sub);
+      });
+
+      // 기관지 유입 통로 링
+      const ductGeo = new THREE.CylinderGeometry(0.45, 0.62, 1.1, 20, 1, true);
+      const ductMesh = new THREE.Mesh(ductGeo, lab3D.alveolusMat);
+      ductMesh.position.set(0, 1.35, 0);
+      lab3D.alveolusGroup.add(ductMesh);
+
+      lab3D.rootGroup.add(lab3D.alveolusGroup);
+
+      // 2. 중단 반투명 혈관 터널 (Y = -0.35, X축을 가로지르는 대형 모세혈관)
+      const vesselCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-4.8, -0.45, 0),
+        new THREE.Vector3(-1.8, -0.32, 0.08),
+        new THREE.Vector3(1.8, -0.32, -0.08),
+        new THREE.Vector3(4.8, -0.45, 0)
+      ]);
+      const vesselGeo = new THREE.TubeGeometry(vesselCurve, 48, 1.38, 28, false);
+      lab3D.vesselMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf43f5e,
+        emissive: 0x881337,
+        emissiveIntensity: 0.25,
+        roughness: 0.25,
+        clearcoat: 0.75,
+        transparent: true,
+        opacity: 0.22,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      lab3D.vesselTube = new THREE.Mesh(vesselGeo, lab3D.vesselMat);
+      lab3D.rootGroup.add(lab3D.vesselTube);
+    }
+
+    /**
+     * (B) 적혈구(RBC) 흐름 · 산소(O2) 유입 입자 · 이산화탄소(CO2) 배출 입자
+     */
+    function buildGasAndRBC3D() {
+      // 1. 적혈구 (양면 오목 원반 느낌의 3D 메시 14개)
+      const rbcGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.11, 20);
+      const rbcMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe11d48,
+        emissive: 0x9f1239,
+        emissiveIntensity: 0.45,
+        roughness: 0.32,
+        clearcoat: 0.6,
+        transparent: true,
+        opacity: 0.78
+      });
+
+      for (let i = 0; i < 14; i++) {
+        const rbc = new THREE.Mesh(rbcGeo, rbcMat);
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 0.55 + Math.random() * 0.52;
+        rbc.position.set(
+          -4.5 + (i / 14) * 9.0,
+          -0.35 + Math.sin(angle) * rad,
+          Math.cos(angle) * rad
+        );
+        rbc.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        lab3D.rootGroup.add(rbc);
+        lab3D.rbcList.push({
+          mesh: rbc,
+          yOff: Math.sin(angle) * rad,
+          zOff: Math.cos(angle) * rad,
+          speed: 0.9 + Math.random() * 0.5,
+          rotSpeed: (Math.random() - 0.5) * 1.5
+        });
+      }
+
+      // 2. 산소(O2) 쌍원자 분자 입자 (폐포 -> 혈관 내부로 확산, 시안/에메랄드 빛)
+      const o2Mat = new THREE.MeshStandardMaterial({
+        color: 0x34d399,
+        emissive: 0x10b981,
+        emissiveIntensity: 0.95
+      });
+      for (let i = 0; i < 24; i++) {
+        const pair = new THREE.Group();
+        const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), o2Mat);
+        const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), o2Mat);
+        s1.position.x = -0.045;
+        s2.position.x = 0.045;
+        pair.add(s1, s2);
+        lab3D.rootGroup.add(pair);
+        lab3D.o2Particles.push({
+          mesh: pair,
+          xBase: -2.2 + Math.random() * 2.2,
+          zBase: (Math.random() - 0.5) * 1.1,
+          t: Math.random(),
+          speed: 0.35 + Math.random() * 0.25
+        });
+      }
+
+      // 3. 이산화탄소(CO2) 삼원자 분자 입자 (혈관 -> 폐포로 상승 배출, 인디고/블루 빛)
+      const co2CenterMat = new THREE.MeshStandardMaterial({ color: 0x818cf8, emissive: 0x4f46e5, emissiveIntensity: 0.9 });
+      const co2SideMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.9 });
+      for (let i = 0; i < 34; i++) {
+        const tri = new THREE.Group();
+        const cAtom = new THREE.Mesh(new THREE.SphereGeometry(0.072, 10, 10), co2CenterMat);
+        const oLeft = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 10), co2SideMat);
+        const oRight = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 10), co2SideMat);
+        oLeft.position.x = -0.095;
+        oRight.position.x = 0.095;
+        tri.add(cAtom, oLeft, oRight);
+        lab3D.rootGroup.add(tri);
+        lab3D.co2Particles.push({
+          mesh: tri,
+          xBase: -1.8 + Math.random() * 3.6,
+          zBase: (Math.random() - 0.5) * 1.1,
+          t: Math.random(),
+          speed: 0.32 + Math.random() * 0.25
+        });
+      }
+    }
+
+    /**
+     * (C) 혈장 속 거대 알부민 단백질(Albumin) & 수소 이온(H+) · 유리 칼슘(Ca2+) 교환
+     */
+    function buildAlbuminAndIons3D() {
+      lab3D.albuminGroup = new THREE.Group();
+      lab3D.albuminGroup.position.set(0.15, -0.35, 0.15);
+
+      // 알부민 단백질의 3대 입체 도메인(Domain I, II, III)을 유기적 구체 클러스터로 표현
+      lab3D.albuminCoreMat = new THREE.MeshPhysicalMaterial({
+        color: 0xa855f7,
+        emissive: 0x6b21a8,
+        emissiveIntensity: 0.48,
+        roughness: 0.28,
+        clearcoat: 0.85,
+        transparent: true,
+        opacity: 0.92
+      });
+
+      const domainOffsets = [
+        { x: -0.45, y: 0.22, z: 0.1, r: 0.52 },
+        { x: 0.45, y: 0.22, z: -0.1, r: 0.52 },
+        { x: 0.0, y: -0.32, z: 0.18, r: 0.55 },
+        { x: 0.0, y: 0.12, z: -0.22, r: 0.48 }
+      ];
+      domainOffsets.forEach(d => {
+        const lobe = new THREE.Mesh(new THREE.SphereGeometry(d.r, 24, 20), lab3D.albuminCoreMat);
+        lobe.position.set(d.x, d.y, d.z);
+        lab3D.albuminGroup.add(lobe);
+      });
+
+      // 알부민 표면의 8개 음전하(-) 결합 포켓 (정상 pH에서는 H+가 붙어있고, 알칼리화 시 H+가 떨어지며 Ca2+가 달라붙음)
+      const pocketPositions = [
+        new THREE.Vector3(-0.78, 0.42, 0.35),
+        new THREE.Vector3(0.78, 0.42, 0.35),
+        new THREE.Vector3(-0.72, -0.25, 0.42),
+        new THREE.Vector3(0.72, -0.25, 0.42),
+        new THREE.Vector3(0.0, 0.58, 0.45),
+        new THREE.Vector3(0.0, -0.68, 0.45),
+        new THREE.Vector3(-0.55, 0.15, -0.52),
+        new THREE.Vector3(0.55, 0.15, -0.52)
+      ];
+
+      const hIonMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 1.0
+      });
+      const boundCaMat = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        emissive: 0xd97706,
+        emissiveIntensity: 1.1
+      });
+      const socketRingMat = new THREE.MeshBasicMaterial({
+        color: 0xf472b6,
+        transparent: true,
+        opacity: 0.75
+      });
+
+      pocketPositions.forEach((pos, idx) => {
+        // 결합 부위 소켓 링
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.16, 16), socketRingMat);
+        ring.position.copy(pos);
+        ring.lookAt(pos.clone().multiplyScalar(2));
+        lab3D.albuminGroup.add(ring);
+
+        // 수소 이온 (H+ : 파란 작은 구체)
+        const hIon = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 12), hIonMat);
+        hIon.position.copy(pos);
+        lab3D.albuminGroup.add(hIon);
+
+        // 알칼리화 시 결합되는 칼슘 이온 (Ca2+ : 황금빛 구체)
+        const caIon = new THREE.Mesh(new THREE.SphereGeometry(0.125, 14, 14), boundCaMat);
+        caIon.position.copy(pos);
+        caIon.scale.set(0.01, 0.01, 0.01);
+        lab3D.albuminGroup.add(caIon);
+
+        lab3D.bindingPockets.push({
+          basePos: pos.clone(),
+          hIon,
+          caIon,
+          threshold: (idx + 0.5) / pocketPositions.length
+        });
+      });
+
+      lab3D.rootGroup.add(lab3D.albuminGroup);
+
+      // 혈장 속 자유롭게 떠다니는 활성 유리 칼슘 이온 (Free Ionized Ca2+ 22개)
+      const freeCaMat = new THREE.MeshStandardMaterial({
+        color: 0xfde047,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 1.15
+      });
+      for (let i = 0; i < 22; i++) {
+        const fCa = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 14), freeCaMat);
+        const x = -3.4 + Math.random() * 6.8;
+        const y = -0.35 + (Math.random() - 0.5) * 1.4;
+        const z = (Math.random() - 0.5) * 1.2;
+        fCa.position.set(x, y, z);
+        lab3D.rootGroup.add(fCa);
+        lab3D.freeCaParticles.push({
+          mesh: fCa,
+          baseX: x,
+          baseY: y,
+          baseZ: z,
+          phase: Math.random() * Math.PI * 2,
+          indexNorm: i / 22
+        });
+      }
+    }
+
+    /**
+     * (D) 하단 말초 신경 축삭(Peripheral Nerve Axon) & 저칼슘성 과흥분 스파크
+     */
+    function buildPeripheralNerve3D() {
+      lab3D.nerveGroup = new THREE.Group();
+      lab3D.nerveGroup.position.set(0, -2.55, 0.15);
+
+      // 신경 축삭 줄기 (X축 가로 방향)
+      const axonCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-4.2, 0, 0),
+        new THREE.Vector3(-1.4, 0.08, 0.12),
+        new THREE.Vector3(1.4, -0.06, -0.1),
+        new THREE.Vector3(4.2, 0, 0)
+      ]);
+      const axonGeo = new THREE.TubeGeometry(axonCurve, 48, 0.22, 16, false);
+      lab3D.nerveMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.45,
+        roughness: 0.25,
+        clearcoat: 0.7
+      });
+      const axonMesh = new THREE.Mesh(axonGeo, lab3D.nerveMat);
+      lab3D.nerveGroup.add(axonMesh);
+
+      // 수초(Myelin Sheath) 마디 5개
+      const myelinGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.95, 20);
+      myelinGeo.rotateZ(Math.PI / 2);
+      const myelinMat = new THREE.MeshPhysicalMaterial({
+        color: 0x94a3b8,
+        emissive: 0x334155,
+        emissiveIntensity: 0.25,
+        transparent: true,
+        opacity: 0.42
+      });
+      [-2.8, -1.4, 0, 1.4, 2.8].forEach(mx => {
+        const m = new THREE.Mesh(myelinGeo, myelinMat);
+        m.position.set(mx, 0, 0);
+        lab3D.nerveGroup.add(m);
+      });
+
+      // 과흥분 전기 스파크(나트륨 유입 폭주 표현) 입자 28개
+      const sparkMat = new THREE.MeshBasicMaterial({ color: 0xfda4af });
+      for (let i = 0; i < 28; i++) {
+        const sp = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), sparkMat);
+        lab3D.nerveGroup.add(sp);
+        lab3D.nerveSparks.push({
+          mesh: sp,
+          curve: axonCurve,
+          t: Math.random(),
+          speed: 0.65 + Math.random() * 0.55,
+          jitterAngle: Math.random() * Math.PI * 2
+        });
+      }
+
+      lab3D.rootGroup.add(lab3D.nerveGroup);
+    }
+
+    /**
+     * 3D 월드 좌표 라벨 초기화 및 실시간 투영 업데이트
+     */
+    function initSpatialLabels() {
+      dom.spatialLabelsLayer.innerHTML = '';
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'spatial-tag px-2.5 py-1 rounded-lg bg-slate-950/85 border text-[11px] font-bold shadow-lg backdrop-blur-sm flex items-center gap-1.5';
+        el.style.borderColor = def.color;
+        el.style.color = def.color;
+        el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full" style="background:${def.color}"></span><span>${def.text}</span>`;
+        dom.spatialLabelsLayer.appendChild(el);
+        spatialLabelNodes[def.id] = el;
+      });
+    }
+
+    function updateSpatialLabelsProjection() {
+      if (!camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+
+      const isAlkalosis = state.chem.alkalosisFactor > 0.45;
+
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = spatialLabelNodes[def.id];
+        if (!el) return;
+
+        if (!def.scenes.includes(state.currentScene)) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        if (def.id === 'nerveAxon') {
+          el.innerHTML = isAlkalosis
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span><span>말초 신경 과흥분 ↑ (손발 저림·경련)</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>말초 신경세포막 안정 (유리 Ca²⁺ 충분)</span>`;
+          el.style.color = isAlkalosis ? '#FDA4AF' : '#6EE7B7';
+          el.style.borderColor = isAlkalosis ? '#FB7185' : '#34D399';
+        } else if (def.id === 'albumin') {
+          el.innerHTML = isAlkalosis
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>알부민: H⁺ 방출 → Ca²⁺ 흡착 중!</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span><span>알부민 단백질 (H⁺ 결합 유지)</span>`;
+        }
+
+        const worldPos = def.pos.clone();
+        worldPos.project(camera3D);
+
+        if (worldPos.z > 1) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        const screenX = (worldPos.x * 0.5 + 0.5) * W;
+        const screenY = (-worldPos.y * 0.5 + 0.5) * H;
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        el.style.opacity = '0.95';
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 씬별 생화학 시뮬레이션 및 3D 메시 애니메이션 업데이트
+     * =========================================================================
+     */
+    function updateSimulationAnd3D(dt, now) {
+      // 1. 카메라 목표 보간
+      const target = SCENES[state.currentScene].cameraTarget;
+      const lerp = 1 - Math.exp(-dt * 0.0042);
+
+      state.cam.theta += (target.theta - state.cam.theta) * lerp;
+      state.cam.phi += (target.phi - state.cam.phi) * lerp;
+      state.cam.radius += (target.radius - state.cam.radius) * lerp;
+      state.cam.targetX += (target.targetX - state.cam.targetX) * lerp;
+      state.cam.targetY += (target.targetY - state.cam.targetY) * lerp;
+      state.cam.targetZ += (target.targetZ - state.cam.targetZ) * lerp;
+
+      const userLerp = 1 - Math.exp(-dt * 0.014);
+      state.cam.userZoomMult += (state.cam.targetUserZoomMult - state.cam.userZoomMult) * userLerp;
+      state.cam.userPanX += (state.cam.targetUserPanX - state.cam.userPanX) * userLerp;
+      state.cam.userPanY += (state.cam.targetUserPanY - state.cam.userPanY) * userLerp;
+
+      if (dom.zoomLevelLabel) {
+        dom.zoomLevelLabel.textContent = `${Math.round(state.cam.userZoomMult * 100)}%`;
+      }
+
+      if (!state.cam.dragMode) {
+        state.cam.theta += Math.sin(now * 0.0006) * 0.0004;
+      }
+
+      const effTheta = state.cam.theta + state.cam.userThetaOffset;
+      const effPhi = Math.max(0.35, Math.min(2.65, state.cam.phi + state.cam.userPhiOffset));
+      const effRadius = Math.max(3.6, Math.min(22.0, state.cam.radius / state.cam.userZoomMult));
+
+      const lookX = state.cam.targetX + state.cam.userPanX;
+      const lookY = state.cam.targetY + state.cam.userPanY;
+      const lookZ = state.cam.targetZ;
+
+      camera3D.position.set(
+        lookX + effRadius * Math.sin(effPhi) * Math.sin(effTheta),
+        lookY + effRadius * Math.cos(effPhi),
+        lookZ + effRadius * Math.sin(effPhi) * Math.cos(effTheta)
+      );
+      camera3D.lookAt(lookX, lookY, lookZ);
+
+      // 2. 씬별 목표 환기율(Ventilation Rate) 설정
+      if (state.currentScene === 0 || state.currentScene === 1) {
+        state.chem.targetVentRate = 0.35; // 정상 호흡 (pH 7.40)
+      } else if (state.currentScene === 2) {
+        state.chem.targetVentRate = 0.85; // 과호흡 시작 -> CO2 급감 & 알칼리화
+      } else if (state.currentScene === 3) {
+        state.chem.targetVentRate = 0.92; // 알칼리화 심화 -> 알부민 H+ 해리 & Ca2+ 결합
+      }
+
+      // 환기율 및 혈액 화학 지표 부드러운 전이
+      state.chem.ventilationRate += (state.chem.targetVentRate - state.chem.ventilationRate) * 0.04;
+      const vRate = state.chem.ventilationRate;
+
+      // 호흡 주기 위상 업데이트 (과호흡일수록 빠르게 팽창/수축)
+      state.chem.breathPhase += (dt / 1000) * (1.2 + vRate * 4.5);
+
+      // CO2 분압(정상 40 mmHg -> 과호흡 20 mmHg, 느린호흡 46 mmHg)
+      const targetCo2 = 48 - vRate * 28;
+      state.chem.co2Level += (targetCo2 - state.chem.co2Level) * 0.05;
+
+      // 동맥혈 pH (Henderson-Hasselbalch 근사 모델)
+      const targetPh = 7.40 + (40 - state.chem.co2Level) * 0.0095;
+      state.chem.bloodPh += (targetPh - state.chem.bloodPh) * 0.05;
+
+      // 알칼리화 지수 (0 = pH <= 7.40, 1 = pH >= 7.58)
+      const targetAlk = Math.max(0, Math.min(1, (state.chem.bloodPh - 7.40) / 0.18));
+      state.chem.alkalosisFactor += (targetAlk - state.chem.alkalosisFactor) * 0.06;
+
+      // 활성 유리 칼슘 비율 & 신경 과흥분도
+      state.chem.freeCalciumRatio = 1.0 - state.chem.alkalosisFactor * 0.62;
+      state.chem.nerveExcitability = 0.12 + state.chem.alkalosisFactor * 0.88;
+
+      // 3. 3D 분자·세포·신경 메시 업데이트
+      applyChemistryTo3DMeshes(dt, now);
+      syncBloodChemHUD();
+      updateSpatialLabelsProjection();
+    }
+
+    function applyChemistryTo3DMeshes(dt, now) {
+      const vRate = state.chem.ventilationRate;
+      const alk = state.chem.alkalosisFactor;
+      const breathWave = Math.sin(state.chem.breathPhase);
+
+      // (1) 폐포낭 호흡 팽창·수축
+      if (lab3D.alveolusGroup) {
+        const s = 1 + breathWave * (0.06 + vRate * 0.08);
+        lab3D.alveolusGroup.scale.set(s, s, s);
+        lab3D.alveolusMat.emissiveIntensity = 0.25 + vRate * 0.45;
+      }
+
+      // (2) 혈관 색조 변화 (정상 선홍색 -> 알칼리화 시 푸른빛/보라빛 띤 혈장 강조)
+      if (lab3D.vesselMat) {
+        lab3D.vesselMat.color.setHex(alk > 0.45 ? 0x818cf8 : 0xf43f5e);
+        lab3D.vesselMat.emissive.setHex(alk > 0.45 ? 0x3730a3 : 0x881337);
+      }
+
+      // (3) 적혈구 혈류 이동
+      lab3D.rbcList.forEach(r => {
+        r.mesh.position.x += (dt / 1000) * r.speed * (0.8 + vRate * 0.7);
+        if (r.mesh.position.x > 4.6) r.mesh.position.x = -4.6;
+        r.mesh.rotation.x += (dt / 1000) * r.rotSpeed;
+        r.mesh.rotation.y += (dt / 1000) * r.rotSpeed;
+      });
+
+      // (4) 산소(O2) 유입 입자 (폐포 Y=2.0 -> 혈관 Y=-0.35)
+      lab3D.o2Particles.forEach(p => {
+        p.t += (dt / 1000) * p.speed * (0.7 + vRate * 0.8);
+        if (p.t > 1) p.t -= 1;
+
+        const y = 2.0 - p.t * 2.45;
+        const x = p.xBase + Math.sin(p.t * 6 + now * 0.002) * 0.25;
+        p.mesh.position.set(x, y, p.zBase);
+        p.mesh.rotation.z += dt * 0.003;
+      });
+
+      // (5) 이산화탄소(CO2) 배출 입자 (혈관 Y=-0.35 -> 폐포 Y=2.6 상승 배출)
+      // 과호흡(vRate 높음)일수록 CO2가 폭포수처럼 빠르게 빠져나감
+      const co2SpeedMult = 0.45 + vRate * 2.1;
+      lab3D.co2Particles.forEach(p => {
+        p.t += (dt / 1000) * p.speed * co2SpeedMult;
+        if (p.t > 1) p.t -= 1;
+
+        const y = -0.55 + p.t * 3.35;
+        const x = p.xBase + Math.cos(p.t * 5 + now * 0.003) * 0.28;
+        p.mesh.position.set(x, y, p.zBase);
+        p.mesh.rotation.y += dt * 0.004;
+      });
+
+      // (6) 알부민 단백질 회전 및 결합 포켓의 [H+ 해리 ↔ 유리 Ca2+ 결합] 애니메이션!
+      if (lab3D.albuminGroup) {
+        lab3D.albuminGroup.rotation.y = Math.sin(now * 0.0008) * 0.35;
+        lab3D.albuminGroup.rotation.z = Math.cos(now * 0.0006) * 0.12;
+        lab3D.albuminCoreMat.emissiveIntensity = 0.38 + alk * 0.65;
+
+        lab3D.bindingPockets.forEach(pocket => {
+          // 알칼리화 정도(alk)가 포켓 임계값을 넘으면 H+가 떨어져 나가고 Ca2+가 결합됨
+          const localSwitch = Math.max(0, Math.min(1, (alk - pocket.threshold + 0.18) / 0.24));
+
+          // H+ (수소 이온): localSwitch가 1이 되면 바깥으로 이탈하며 축소
+          const hOutDir = pocket.basePos.clone().normalize().multiplyScalar(localSwitch * 0.65);
+          pocket.hIon.position.copy(pocket.basePos).add(hOutDir);
+          const hScale = Math.max(0.01, 1 - localSwitch * 0.95);
+          pocket.hIon.scale.set(hScale, hScale, hScale);
+
+          // Ca2+ (칼슘 이온): localSwitch가 1이 되면 바깥에서 알부민 포켓으로 빨려들어와 결합
+          const caInDir = pocket.basePos.clone().normalize().multiplyScalar((1 - localSwitch) * 0.75);
+          pocket.caIon.position.copy(pocket.basePos).add(caInDir);
+          const caScale = Math.max(0.01, localSwitch * 1.15);
+          pocket.caIon.scale.set(caScale, caScale, caScale);
+        });
+      }
+
+      // (7) 혈장 내 자유 유영 유리 칼슘(Free Ca2+) 입자 (알부민에 흡수될수록 개수가 줄어듦)
+      lab3D.freeCaParticles.forEach(fc => {
+        const isCaptured = fc.indexNorm > state.chem.freeCalciumRatio;
+        const targetScale = isCaptured ? 0.01 : 1.0;
+        const curScale = fc.mesh.scale.x + (targetScale - fc.mesh.scale.x) * 0.12;
+        fc.mesh.scale.set(curScale, curScale, curScale);
+
+        fc.mesh.position.set(
+          fc.baseX + Math.sin(now * 0.0018 + fc.phase) * 0.25,
+          fc.baseY + Math.cos(now * 0.0022 + fc.phase) * 0.18,
+          fc.baseZ
+        );
+      });
+
+      // (8) 말초 신경 축삭 & 과흥분 전기 스파크 (손발 저림 시뮬레이션)
+      const exc = state.chem.nerveExcitability;
+      if (lab3D.nerveMat) {
+        lab3D.nerveMat.color.setHex(exc > 0.55 ? 0xf43f5e : 0x38bdf8);
+        lab3D.nerveMat.emissive.setHex(exc > 0.55 ? 0xe11d48 : 0x0284c7);
+        lab3D.nerveMat.emissiveIntensity = 0.35 + exc * 1.35;
+      }
+
+      lab3D.nerveSparks.forEach(sp => {
+        sp.t += (dt / 1000) * sp.speed * (0.4 + exc * 2.4);
+        if (sp.t > 1) sp.t -= 1;
+
+        const pt = sp.curve.getPointAt(sp.t);
+        const jitter = exc * 0.28 * Math.sin(now * 0.025 + sp.jitterAngle);
+        sp.mesh.position.set(pt.x, pt.y + jitter, pt.z + Math.cos(now * 0.025 + sp.jitterAngle) * exc * 0.22);
+        const sScale = 0.25 + exc * 1.15;
+        sp.mesh.scale.set(sScale, sScale, sScale);
+      });
+
+      if (lab3D.ambientStars) {
+        lab3D.ambientStars.rotation.y += dt * 0.00004;
+      }
+    }
+
+    function syncBloodChemHUD() {
+      const ph = state.chem.bloodPh;
+      const co2 = Math.round(state.chem.co2Level);
+      const caPct = Math.round(state.chem.freeCalciumRatio * 100);
+      const isAlk = ph > 7.45;
+
+      dom.hudPhVal.textContent = ph.toFixed(2);
+      if (isAlk) {
+        dom.telemetryStateLabel.textContent = "ALKALOSIS";
+        dom.telemetryStateLabel.className = "text-indigo-300 font-bold";
+        dom.hudPhVal.className = "text-base sm:text-lg font-bold text-indigo-300";
+        dom.hudPhTag.textContent = "알칼리성 ↑";
+      } else if (ph < 7.36) {
+        dom.telemetryStateLabel.textContent = "ACIDIC SHIFT";
+        dom.telemetryStateLabel.className = "text-sky-300 font-bold";
+        dom.hudPhVal.className = "text-base sm:text-lg font-bold text-sky-300";
+        dom.hudPhTag.textContent = "산성화 경향";
+      } else {
+        dom.telemetryStateLabel.textContent = "NORMAL pH";
+        dom.telemetryStateLabel.className = "text-emerald-400 font-bold";
+        dom.hudPhVal.className = "text-base sm:text-lg font-bold text-emerald-400";
+        dom.hudPhTag.textContent = "중성(정상)";
+      }
+
+      dom.hudCo2Val.textContent = `${co2} mmHg`;
+      const co2BarPct = Math.max(15, Math.min(95, ((co2 - 15) / 35) * 100));
+      dom.hudCo2Bar.style.width = `${co2BarPct}%`;
+
+      dom.hudCaVal.textContent = caPct < 70 ? `${caPct}% (저하·과흥분)` : `${caPct}% (안정)`;
+      dom.hudCaVal.className = caPct < 70 ? "font-mono-tech font-bold text-rose-400" : "font-mono-tech font-bold text-amber-300";
+      dom.hudCaBar.style.width = `${Math.max(15, caPct)}%`;
+    }
+
+    function mainLoop(now) {
+      const dt = Math.min(50, now - state.lastFrameTime);
+      state.lastFrameTime = now;
+
+      if (state.isPlaying && state.hasStarted && state.currentScene < 4) {
+        const scene = SCENES[state.currentScene];
+        state.sceneElapsedMs += dt;
+        const progress = Math.min(100, (state.sceneElapsedMs / scene.durationMs) * 100);
+        dom.sceneProgressBar.style.width = `${progress}%`;
+
+        if (state.sceneElapsedMs >= scene.durationMs) {
+          goToScene(state.currentScene + 1, true);
+        }
+      }
+
+      updateSimulationAnd3D(dt, now);
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+      }
+      requestAnimationFrame(mainLoop);
+    }
+
+    /**
+     * =========================================================================
+     * 한국어 음성 나레이션 (Web Speech API)
+     * =========================================================================
+     */
+    const ttsManager = {
+      supported: 'speechSynthesis' in window,
+      koVoice: null,
+
+      init() {
+        if (!this.supported) {
+          dom.ttsStatusText.textContent = "음성 미지원 (자막 모드)";
+          return;
+        }
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          this.koVoice = voices.find(v => v.lang.includes('ko') && (v.name.includes('Google') || v.name.includes('Heami') || v.name.includes('Yuna')))
+                      || voices.find(v => v.lang.includes('ko'));
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      },
+
+      speak(text) {
+        if (!this.supported || state.isMuted || !state.hasStarted) return;
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (this.koVoice) utterance.voice = this.koVoice;
+          utterance.lang = 'ko-KR';
+          utterance.rate = 1.02;
+
+          utterance.onstart = () => {
+            dom.ttsStatusText.textContent = "나레이션 재생 중...";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+          };
+          utterance.onend = () => {
+            dom.ttsStatusText.textContent = "나레이션 대기 중";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {}
+      },
+
+      stop() {
+        if (!this.supported) return;
+        try {
+          window.speechSynthesis.cancel();
+          dom.ttsStatusText.textContent = state.isMuted ? "음소거됨" : "일시정지됨";
+          dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-slate-500";
+        } catch (e) {}
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 씬 전환 및 3D 카메라 / 시뮬레이터 제어 바인딩
+     * =========================================================================
+     */
+    function setUserZoom(nextZoom) {
+      state.cam.targetUserZoomMult = Math.max(0.55, Math.min(3.2, nextZoom));
+    }
+
+    function resetUserCameraView() {
+      state.cam.userThetaOffset = 0;
+      state.cam.userPhiOffset = 0;
+      state.cam.targetUserZoomMult = 1.0;
+      state.cam.targetUserPanX = 0;
+      state.cam.targetUserPanY = 0;
+    }
+
+    function goToScene(index, autoSpeak = true) {
+      if (index < 0) index = 0;
+      if (index >= SCENES.length) index = SCENES.length - 1;
+
+      state.currentScene = index;
+      state.sceneElapsedMs = 0;
+      const scene = SCENES[index];
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.className = idx === index
+          ? "scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer"
+          : "scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer";
+      });
+
+      dom.hudSceneNum.textContent = scene.num;
+      dom.hudSceneTitle.textContent = scene.title;
+      dom.hudSubBadge.innerHTML = `<span>${scene.badgeText}</span>`;
+      dom.hudSubBadge.className = `inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] w-fit backdrop-blur-sm ${scene.badgeClass}`;
+      dom.hudCameraInfo.textContent = scene.camInfo;
+
+      dom.floatingCardTitle.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="${scene.cardColor}">${scene.cardTitle}</span>`;
+      dom.floatingCardBody.textContent = scene.cardBody;
+
+      dom.subtitleText.innerHTML = scene.subtitleHtml;
+      dom.currentSceneCounter.textContent = index + 1;
+      dom.sceneProgressBar.style.width = index === 4 ? "100%" : "0%";
+
+      dom.scene4ChemSummary.classList.toggle('hidden', index !== 3);
+      dom.simulatorControls.classList.toggle('hidden', index !== 4);
+
+      if (index === 4) {
+        applySimPreset(state.simPreset);
+      }
+
+      dom.prevSceneBtn.disabled = index === 0;
+      dom.nextSceneBtn.disabled = index === SCENES.length - 1;
+
+      if (autoSpeak && state.hasStarted && !state.isMuted) {
+        ttsManager.speak(scene.narrationText);
+      }
+    }
+
+    function applySimPreset(preset) {
+      state.simPreset = preset;
+      const map = {
+        normal: { slider: 38, vent: 0.35, rateText: "14회/분" },
+        hyper:  { slider: 92, vent: 0.92, rateText: "34회/분" },
+        bag:    { slider: 22, vent: 0.18, rateText: "8회/분" }
+      };
+      const cfg = map[preset] || map.normal;
+      dom.ventilationSlider.value = cfg.slider;
+      dom.ventilationRateText.textContent = cfg.rateText;
+      state.chem.targetVentRate = cfg.vent;
+
+      dom.presetBtns.forEach(b => {
+        const active = b.dataset.preset === preset;
+        b.className = active
+          ? "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-400/60 transition cursor-pointer"
+          : "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer";
+      });
+    }
+
+    function setPlayState(playing) {
+      state.isPlaying = playing;
+      dom.iconPlay.classList.toggle('hidden', playing);
+      dom.iconPause.classList.toggle('hidden', !playing);
+      dom.playPauseLabel.textContent = playing ? "일시정지" : "재생";
+
+      if (playing) {
+        if (!state.isMuted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      } else {
+        ttsManager.stop();
+      }
+    }
+
+    function updateMuteUI() {
+      dom.iconSoundOn.classList.toggle('hidden', state.isMuted);
+      dom.iconSoundOff.classList.toggle('hidden', !state.isMuted);
+      dom.muteBtnLabel.textContent = state.isMuted ? "음소거" : "음성 ON";
+    }
+
+    function bindEvents() {
+      dom.startWithVoiceBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = false;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, true);
+        setPlayState(true);
+      });
+
+      dom.startSilentBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = true;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, false);
+        setPlayState(true);
+      });
+
+      // 3D WebGL 궤도 회전 · 패닝 · 줌
+      const targetEl = dom.threeContainer;
+      targetEl.addEventListener('contextmenu', e => e.preventDefault());
+
+      targetEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setUserZoom(state.cam.targetUserZoomMult * factor);
+      }, { passive: false });
+
+      targetEl.addEventListener('dblclick', resetUserCameraView);
+
+      targetEl.addEventListener('mousedown', e => {
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+        state.cam.dragMode = (e.shiftKey || e.button === 1 || e.button === 2) ? 'pan' : 'orbit';
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!state.cam.dragMode) return;
+        const dx = e.clientX - state.cam.dragStartX;
+        const dy = e.clientY - state.cam.dragStartY;
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+
+        if (state.cam.dragMode === 'pan') {
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - dx * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + dy * panSpeed));
+        } else {
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 멀티터치 핀치 줌 & 3D 회전
+      targetEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          state.cam.dragMode = 'orbit';
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          state.cam.dragMode = 'pinch';
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          state.cam.pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          state.cam.pinchStartZoom = state.cam.targetUserZoomMult;
+          state.cam.pinchCenterX = (t0.clientX + t1.clientX) * 0.5;
+          state.cam.pinchCenterY = (t0.clientY + t1.clientY) * 0.5;
+        }
+      }, { passive: false });
+
+      targetEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && state.cam.dragMode === 'orbit') {
+          const dx = e.touches[0].clientX - state.cam.dragStartX;
+          const dy = e.touches[0].clientY - state.cam.dragStartY;
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        } else if (e.touches.length === 2 && state.cam.dragMode === 'pinch') {
+          e.preventDefault();
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          const midX = (t0.clientX + t1.clientX) * 0.5;
+          const midY = (t0.clientY + t1.clientY) * 0.5;
+
+          if (state.cam.pinchStartDist > 0) {
+            setUserZoom(state.cam.pinchStartZoom * (dist / state.cam.pinchStartDist));
+          }
+
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - (midX - state.cam.pinchCenterX) * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + (midY - state.cam.pinchCenterY) * panSpeed));
+          state.cam.pinchCenterX = midX;
+          state.cam.pinchCenterY = midY;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        state.cam.dragMode = null;
+      });
+
+      dom.resetCameraBtn.addEventListener('click', resetUserCameraView);
+      dom.hudResetViewBtn.addEventListener('click', resetUserCameraView);
+      dom.zoomInBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult * 1.25));
+      dom.zoomOutBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult / 1.25));
+
+      dom.muteToggleBtn.addEventListener('click', () => {
+        state.isMuted = !state.isMuted;
+        updateMuteUI();
+        if (state.isMuted) ttsManager.stop();
+        else if (state.isPlaying && state.hasStarted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.addEventListener('click', () => {
+          if (!state.hasStarted) {
+            state.hasStarted = true;
+            dom.startOverlay.classList.add('hidden');
+          }
+          goToScene(idx, true);
+          if (!state.isPlaying) setPlayState(true);
+        });
+      });
+
+      dom.playPauseBtn.addEventListener('click', () => {
+        if (!state.hasStarted) {
+          state.hasStarted = true;
+          dom.startOverlay.classList.add('hidden');
+        }
+        setPlayState(!state.isPlaying);
+      });
+      dom.prevSceneBtn.addEventListener('click', () => goToScene(state.currentScene - 1, true));
+      dom.nextSceneBtn.addEventListener('click', () => goToScene(state.currentScene + 1, true));
+      dom.replayNarrationBtn.addEventListener('click', () => {
+        state.sceneElapsedMs = 0;
+        if (state.isMuted) {
+          state.isMuted = false;
+          updateMuteUI();
+        }
+        ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // Scene 5 프리셋 및 슬라이더
+      dom.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          applySimPreset(btn.dataset.preset);
+        });
+      });
+
+      dom.ventilationSlider.addEventListener('input', e => {
+        const val = Number(e.target.value);
+        state.chem.targetVentRate = val / 100;
+        const breathsPerMin = Math.round(6 + (val / 100) * 32);
+        dom.ventilationRateText.textContent = `${breathsPerMin}회/분`;
+      });
+    }
+
+    window.onload = function () {
+      initThree3D();
+      ttsManager.init();
+      bindEvents();
+      requestAnimationFrame(mainLoop);
+    };
+  </script>
+</body>
+</html>

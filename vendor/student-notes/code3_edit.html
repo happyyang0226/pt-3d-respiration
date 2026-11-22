@@ -1,0 +1,160 @@
+<!--EDIT: 내용 수정 v2 — 설정은 window.STUDY_CFG={app,slides,activeClass,mount,toc,goTo,parentStore,editable,editSkip}--><style>
+#edBtn{font:inherit;font-size:13px;font-weight:700;border:1px solid #1f8a4c;color:#1f8a4c;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+#edBtn[hidden]{display:none}
+#edBtn[aria-pressed=true]{background:#1f8a4c;color:#fff}
+#edBtn.float{position:fixed;left:14px;bottom:58px;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.18);padding:8px 14px}
+body.ed-on [data-ed]{outline:1px dashed rgba(31,138,76,.55);outline-offset:2px;cursor:text;border-radius:3px}
+body.ed-on [data-ed]:hover{background:rgba(31,138,76,.06)}
+body.ed-on [data-ed]:focus{outline:2px solid #1f8a4c;background:#f3fbf6}
+body.ed-on [data-ed].ed-ch{box-shadow:inset 3px 0 0 #1f8a4c}
+body.ed-on svg [data-ed]{outline:0;text-decoration:underline dashed rgba(31,138,76,.8);text-underline-offset:3px;cursor:text}
+body.ed-on svg [data-ed]:hover{fill-opacity:.7}
+body.ed-on svg [data-ed].ed-ch{text-decoration:underline solid #1f8a4c;box-shadow:none}
+#edSvgIn{position:fixed;z-index:67;font:inherit;font-size:15px;padding:4px 8px;border:2px solid #1f8a4c;border-radius:6px;background:#fff;color:#172033;box-shadow:0 6px 18px rgba(0,0,0,.2);min-width:120px}
+#edSvgIn[hidden]{display:none}
+#edBar{position:fixed;left:8px;right:8px;margin:0 auto;width:max-content;max-width:calc(100vw - 16px);bottom:12px;z-index:66;display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:center;background:#123d27;color:#fff;border-radius:14px;padding:6px 8px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif}
+#edBar[hidden]{display:none}
+#edBar button,#edBar label{font:inherit;font-size:13px;border:0;background:transparent;color:#fff;border-radius:9px;padding:6px 9px;cursor:pointer;white-space:nowrap;line-height:1.1}
+#edBar button:hover,#edBar label:hover{background:rgba(255,255,255,.14)}
+#edBar button:disabled{opacity:.4;cursor:default}
+#edBar .sep{width:1px;align-self:stretch;background:rgba(255,255,255,.25);margin:2px 3px}
+#edBar .msg{font-size:12px;opacity:.85;padding:0 4px}
+#edBar .done{background:#fff;color:#123d27;font-weight:700}
+@media (max-width:640px){#edBar{bottom:8px;width:auto;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}#edBar::-webkit-scrollbar{display:none}#edBar .msg{display:none}#edBtn.float{bottom:62px}}
+@media print{#edBtn,#edBar{display:none!important}body.ed-on [data-ed]{outline:0!important;box-shadow:none!important}}
+</style>
+<script>
+(function(){
+"use strict";
+var CFG=window.STUDY_CFG||{};
+var MOD=CFG.app||document.documentElement.getAttribute("data-mod")||(location.pathname.split("/").pop()||document.title||"app");
+var slides=[].slice.call(document.querySelectorAll(CFG.slides||"section.slide, .slide"));
+if(!slides.length) slides=[document.querySelector("main")||document.body];
+var inApp=!!CFG.parentStore&&(window.parent&&window.parent!==window);
+var LSK="mp-edits-v1:"+MOD, FLAG="mp-edit-on";
+/* ---- 고칠 수 있는 글 칸 찾기 (웹앱 틀의 '수정본 저장'도 같은 규칙을 씀) ---- */
+/*EDITC*/var EDITC={BLOCK:"H1,H2,H3,H4,H5,H6,P,LI,TD,TH,DT,DD,FIGCAPTION,BLOCKQUOTE,CAPTION,SUMMARY".split(","),INL:"DIV,SPAN,B,STRONG,EM,SMALL,A,LABEL".split(","),
+  NO:"svg,button,select,textarea,input,canvas,script,style,iframe,video,audio,[contenteditable=false],.st-mark,.myphotos,.mylinks,[data-noedit]",
+  norm:function(el){ return el.tagName+"|"+(el.textContent||"").replace(/\s+/g," ").trim(); },
+  hash:function(s){ var h=5381; for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+"_"+s.length; },
+  SVGNO:"svg.anat,[data-noedit],[contenteditable=false]",
+  isSvg:function(el){ return el.namespaceURI==="http://www.w3.org/2000/svg"; },
+  get:function(el){ return this.isSvg(el)?el.textContent:el.innerHTML; },
+  set:function(el,v){ if(this.isSvg(el)) el.textContent=v; else el.innerHTML=v; },
+  cands:function(root,skip){ var self=this, out=[];
+    var all=[].slice.call(root.querySelectorAll("*"));
+    all.forEach(function(el){ var t=el.tagName;
+      if(self.isSvg(el)){ if((t==="text"||t==="tspan")&&!el.querySelector("*")&&(el.textContent||"").trim()&&!el.closest(self.SVGNO)&&!(skip&&el.closest(skip))) out.push(el); return; }
+      if(self.BLOCK.indexOf(t)<0&&self.INL.indexOf(t)<0) return;
+      if(el.closest(self.NO)) return; if(skip&&el.closest(skip)) return;
+      if(el.querySelector("button,input,select,textarea,svg,canvas,iframe,video,img")) return;
+      if(!(el.textContent||"").trim()) return;
+      if(self.INL.indexOf(t)>=0){ var direct=false; for(var n=el.firstChild;n;n=n.nextSibling){ if(n.nodeType===3&&n.nodeValue.trim()){ direct=true; break; } } if(!direct) return; }
+      out.push(el); });
+    return out.filter(function(el){ for(var p=el.parentElement;p&&p!==root;p=p.parentElement){ if(out.indexOf(p)>=0) return false; } return true; }); },
+  key:function(slide,i){ return slide.id||slide.getAttribute("data-title")||("s"+i); }
+};/*/EDITC*/
+window.EDITC=EDITC;
+var SKIP=CFG.editSkip||"#quiz,.quiz,[data-noedit]";
+var CELLS=[]; // {el,sk,idx,o,r}
+slides.forEach(function(s,si){ var sk=EDITC.key(s,si); EDITC.cands(s,SKIP).forEach(function(el,idx){ var c={el:el,sk:sk,idx:idx,o:EDITC.hash(EDITC.norm(el)),r:EDITC.get(el),svg:EDITC.isSvg(el)}; el._ed=c; CELLS.push(c); }); });
+var data={}; // sk -> idx -> {o,h}
+function count(){ var n=0; Object.keys(data).forEach(function(k){ n+=Object.keys(data[k]).length; }); return n; }
+function apply(){ var miss=0;
+  CELLS.forEach(function(c){ EDITC.set(c.el,c.r); c.el.classList.remove("ed-ch"); });
+  Object.keys(data).forEach(function(sk){ var m=data[sk]; Object.keys(m).forEach(function(idx){ var v=m[idx];
+    var c=CELLS.filter(function(x){return x.sk===sk&&String(x.idx)===String(idx)&&x.o===v.o;})[0]||CELLS.filter(function(x){return x.sk===sk&&x.o===v.o;})[0];
+    if(c){ EDITC.set(c.el,v.h); c.el.classList.add("ed-ch"); } else miss++; }); });
+  try{ document.dispatchEvent(new Event("mp-edited")); }catch(e){}
+  return miss; }
+var saveT=0;
+function save(){ clearTimeout(saveT); saveT=setTimeout(function(){
+  if(inApp){ try{ parent.postMessage({app:"mp",editPut:MOD,edits:data},"*"); }catch(e){} } else { try{ localStorage.setItem(LSK,JSON.stringify(data)); }catch(e){} }
+  status("저장됨 ✓ · 고친 칸 "+count()+"개"); try{ document.dispatchEvent(new Event("mp-edited")); }catch(e){} },400); }
+function record(c){ var h=EDITC.get(c.el); if(!data[c.sk]) data[c.sk]={};
+  if(h===c.r){ delete data[c.sk][c.idx]; if(!Object.keys(data[c.sk]).length) delete data[c.sk]; c.el.classList.remove("ed-ch"); }
+  else { data[c.sk][c.idx]={o:c.o,h:h}; c.el.classList.add("ed-ch"); }
+  save(); }
+/* ---- UI ---- */
+var btn=document.createElement("button"); btn.id="edBtn"; btn.type="button"; btn.textContent="✏️ 수정"; btn.title="교수용: 이 화면의 글을 고칩니다"; btn.hidden=true; btn.setAttribute("aria-pressed","false");
+var bar=CFG.mount?document.querySelector(CFG.mount):null;
+if(bar){ var before=bar.querySelector("#lkBtn")||bar.querySelector("#stBtn"); if(before) bar.insertBefore(btn,before); else bar.appendChild(btn); } else { btn.classList.add("float"); document.body.appendChild(btn); }
+var tb=document.createElement("div"); tb.id="edBar"; tb.hidden=true; tb.setAttribute("role","toolbar"); tb.setAttribute("aria-label","내용 수정 도구");
+function B(html,title){ var e=document.createElement("button"); e.type="button"; e.innerHTML=html; if(title) e.title=title; tb.appendChild(e); return e; }
+function sep(){ var s=document.createElement("span"); s.className="sep"; tb.appendChild(s); }
+var msg=document.createElement("span"); msg.className="msg"; msg.textContent="초록 점선 칸을 눌러 고치세요";
+var bBold=B("<b>B</b> 굵게","선택한 글자 굵게 (Ctrl+B)"), bUndo=B("↶ 되돌리기","방금 고친 것 되돌리기 (Ctrl+Z)"), bCell=B("↺ 이 칸 원래대로","커서가 있는 칸을 처음 글로"), bSlide=B("🗑 이 쪽 원래대로","이 슬라이드에서 고친 것을 모두 처음 글로");
+sep(); var bSave=B(inApp?"⬇ 수정본 파일로 저장":"⬇ 수정본 저장",inApp?"고친 내용을 넣은 새 웹앱 파일 만들기":"원본 HTML 파일을 골라 고친 내용을 넣은 새 파일 만들기");
+var bExp=B("수정 내보내기","고친 내용만 .json으로 저장(다른 컴퓨터로 옮길 때)");
+var lImp=document.createElement("label"); lImp.innerHTML='불러오기<input type="file" accept=".json,application/json" hidden>'; lImp.title="수정 내보내기 파일(.json)을 불러와 적용"; tb.appendChild(lImp);
+var fSrc=document.createElement("input"); fSrc.type="file"; fSrc.accept=".html,.htm,text/html"; fSrc.hidden=true; tb.appendChild(fSrc);
+sep(); tb.appendChild(msg); var bDone=B("완료 ✓","수정 끝내기"); bDone.className="done";
+document.body.appendChild(tb);
+function status(t){ msg.textContent=t; clearTimeout(status.t); status.t=setTimeout(function(){ msg.textContent="고친 칸 "+count()+"개 · 초록 점선 칸을 눌러 고치세요"; },2200); }
+var on=false, lastCell=null;
+function setOn(v){ on=v; document.body.classList.toggle("ed-on",v); tb.hidden=!v; btn.setAttribute("aria-pressed",v);
+  CELLS.forEach(function(c){ if(v){ if(!c.svg){ c.el.setAttribute("contenteditable","true"); c.el.spellcheck=false; } c.el.setAttribute("data-ed",""); } else { c.el.removeAttribute("contenteditable"); c.el.removeAttribute("data-ed"); } });
+  if(!v) svgClose(true);
+  if(v){ if(window.__study&&document.body.classList.contains("st-pen")) try{ window.__study.setOpen(false); }catch(e){} var lp=document.getElementById("lkPanel"); if(lp&&!lp.hidden){ var x=lp.querySelector(".x"); if(x) x.click(); } status("고친 칸 "+count()+"개 · 초록 점선 칸을 눌러 고치세요"); }
+  else if(document.activeElement&&document.activeElement._ed) document.activeElement.blur(); }
+/* 그림(SVG) 속 글자: 누르면 작은 입력칸이 떠서 고침 */
+var svgIn=document.createElement("input"); svgIn.id="edSvgIn"; svgIn.type="text"; svgIn.hidden=true; svgIn.setAttribute("aria-label","그림 속 글자 고치기"); document.body.appendChild(svgIn);
+var svgCur=null;
+var svgOrig="";
+function svgOpen(c){ svgClose(true); svgCur=c; lastCell=c; var r=c.el.getBoundingClientRect(); svgOrig=svgIn.value=c.el.textContent; svgIn.hidden=false;
+  svgIn.style.width=Math.max(140,Math.min(innerWidth-24,r.width+60))+"px"; svgIn.style.left=Math.max(8,Math.min(innerWidth-svgIn.offsetWidth-8,r.left-10))+"px"; svgIn.style.top=Math.max(8,r.top-6)+"px"; svgIn.focus(); svgIn.select(); }
+function svgClose(commit){ if(!svgCur) return; var c=svgCur; svgCur=null; var v=commit?svgIn.value:svgOrig; if(v!==c.el.textContent){ c.el.textContent=v; record(c); } svgIn.hidden=true; }
+svgIn.addEventListener("keydown",function(e){ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); svgClose(true); } else if(e.key==="Escape"){ e.preventDefault(); svgClose(false); } });
+svgIn.addEventListener("input",function(){ if(svgCur){ svgCur.el.textContent=svgIn.value; record(svgCur); } });
+svgIn.addEventListener("blur",function(){ setTimeout(function(){ if(document.activeElement!==svgIn) svgClose(true); },120); });
+document.addEventListener("click",function(e){ if(!on) return; var t=e.target&&e.target.closest&&e.target.closest("[data-ed]"); if(t&&t._ed&&t._ed.svg){ e.preventDefault(); e.stopPropagation(); svgOpen(t._ed); } },true);
+btn.onclick=function(){ setOn(!on); };
+bDone.onclick=function(){ setOn(false); };
+document.addEventListener("input",function(e){ var c=e.target&&e.target._ed||(e.target.closest&&e.target.closest("[data-ed]")||{})._ed; if(on&&c) record(c); },true);
+document.addEventListener("focusin",function(e){ if(e.target&&e.target._ed) lastCell=e.target._ed; });
+document.addEventListener("paste",function(e){ if(!on||!(e.target.closest&&e.target.closest("[data-ed]"))) return; e.preventDefault(); var t=(e.clipboardData||window.clipboardData).getData("text/plain"); document.execCommand("insertText",false,t); },true);
+window.addEventListener("keydown",function(e){ var t=e.target; if(!on||!t||!t.isContentEditable) return;
+  if(e.key==="Escape"){ t.blur(); e.stopPropagation(); return; }
+  if(e.key==="Enter"&&!e.shiftKey&&/^(H\d|TD|TH|SPAN|B|STRONG|EM|SMALL|A|LABEL|FIGCAPTION|CAPTION|SUMMARY)$/.test(t.tagName)){ e.preventDefault(); }
+  e.stopPropagation(); },true);
+bBold.addEventListener("mousedown",function(e){ e.preventDefault(); }); bBold.onclick=function(){ document.execCommand("bold"); var a=document.activeElement; if(a&&a._ed) record(a._ed); };
+bUndo.addEventListener("mousedown",function(e){ e.preventDefault(); }); bUndo.onclick=function(){ document.execCommand("undo"); var a=document.activeElement; if(a&&a._ed) record(a._ed); };
+bCell.addEventListener("mousedown",function(e){ e.preventDefault(); }); bCell.onclick=function(){ var c=(document.activeElement&&document.activeElement._ed)||lastCell; if(!c){ status("먼저 고칠 칸을 누르세요"); return; } svgClose(false); EDITC.set(c.el,c.r); record(c); status("이 칸을 처음 글로 돌렸습니다"); };
+var arm=0; bSlide.onclick=function(){ var s=curSlide(); var list=CELLS.filter(function(c){ return s.contains(c.el)&&EDITC.get(c.el)!==c.r; });
+  if(!list.length){ status("이 쪽에는 고친 칸이 없습니다"); return; }
+  if(!arm){ arm=1; bSlide.textContent="한 번 더 누르면 되돌림"; setTimeout(function(){ arm=0; bSlide.textContent="🗑 이 쪽 원래대로"; },2500); return; }
+  arm=0; bSlide.textContent="🗑 이 쪽 원래대로"; svgClose(false); list.forEach(function(c){ EDITC.set(c.el,c.r); record(c); }); status(list.length+"칸을 처음 글로 돌렸습니다"); };
+function curSlide(){ var A=CFG.activeClass||"on"; for(var i=0;i<slides.length;i++) if(slides[i].classList.contains(A)) return slides[i];
+  var best=slides[0],bd=1e9,mid=innerHeight/2; slides.forEach(function(s){ var r=s.getBoundingClientRect(); if(!r.height) return; var d=Math.abs((r.top+r.bottom)/2-mid); if(d<bd){bd=d;best=s;} }); return best; }
+function dl(name,text,type){ var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },600); }
+function stamp(){ var d=new Date(),z=function(n){return (n<10?"0":"")+n;}; return d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+"_"+z(d.getHours())+z(d.getMinutes()); }
+bExp.onclick=function(){ if(inApp){ try{ parent.postMessage({app:"mp",editExport:true},"*"); }catch(e){} return; } dl("수정내용_"+stamp()+".json",JSON.stringify({app:"edits",v:1,mods:(function(o){o[MOD]=data;return o;})({})}),"application/json"); };
+lImp.querySelector("input").onchange=function(){ var f=this.files&&this.files[0], inp=this; if(!f) return; var r=new FileReader();
+  r.onload=function(){ try{ var o=JSON.parse(r.result); if(inApp){ parent.postMessage({app:"mp",editImport:o},"*"); } else { var mine=(o.mods&&o.mods[MOD])||o; Object.keys(mine).forEach(function(sk){ data[sk]=Object.assign(data[sk]||{},mine[sk]); }); var miss=apply(); if(on) setOn(true); save(); status("불러왔습니다"+(miss?" (맞지 않는 칸 "+miss+"개 건너뜀)":"")); } }catch(e){ status("파일을 읽지 못했습니다"); } inp.value=""; };
+  r.readAsText(f); };
+/* 단독 웹앱: 원본 파일을 골라 고친 내용을 넣은 새 파일 만들기 */
+bSave.onclick=function(){ if(inApp){ try{ parent.postMessage({app:"mp",editBake:true},"*"); }catch(e){} return; } if(!count()){ status("아직 고친 칸이 없습니다"); return; } status("지금 열어 둔 원본 HTML 파일을 골라 주세요"); fSrc.click(); };
+fSrc.onchange=function(){ var f=this.files&&this.files[0], inp=this; if(!f) return; var r=new FileReader();
+  r.onload=function(){ var res=bake(String(r.result),data); dl(f.name.replace(/(\.html?)?$/i,"")+"_수정본.html",res.html,"text/html"); status("수정본을 만들었습니다 · 반영 "+res.ok+"칸"+(res.miss?" · 못 넣은 칸 "+res.miss+"개":"")); inp.value=""; };
+  r.readAsText(f); };
+function bake(src,edits){ var doc=new DOMParser().parseFromString(src,"text/html"), ok=0, miss=0;
+  var ss=[].slice.call(doc.querySelectorAll(CFG.slides||"section.slide, .slide")); if(!ss.length) ss=[doc.querySelector("main")||doc.body];
+  var cells=[]; ss.forEach(function(s,si){ var sk=EDITC.key(s,si); EDITC.cands(s,SKIP).forEach(function(el,idx){ cells.push({el:el,sk:sk,idx:idx,o:EDITC.hash(EDITC.norm(el))}); }); });
+  Object.keys(edits).forEach(function(sk){ Object.keys(edits[sk]).forEach(function(idx){ var v=edits[sk][idx];
+    var c=cells.filter(function(x){return x.sk===sk&&String(x.idx)===String(idx)&&x.o===v.o;})[0]||cells.filter(function(x){return x.sk===sk&&x.o===v.o&&!x.used;})[0];
+    if(c){ EDITC.set(c.el,v.h); c.used=1; ok++; } else miss++; }); });
+  var dt=doc.doctype?"<!DOCTYPE html>\n":""; return {html:dt+doc.documentElement.outerHTML,ok:ok,miss:miss}; }
+/* ---- 켜기: 웹앱 틀의 '교수용 수정 켜기', 설정 editable:true, 또는 Ctrl+Shift+E ---- */
+function showBtn(v){ btn.hidden=!v; if(!v&&on) setOn(false); }
+var flagOn=false; try{ flagOn=localStorage.getItem(FLAG)==="1"; }catch(e){}
+if(CFG.editable===false){ btn.remove(); }
+else if(!inApp) showBtn(CFG.editable===true||flagOn);
+document.addEventListener("keydown",function(e){ if(CFG.editable===false||inApp) return; if((e.ctrlKey||e.metaKey)&&e.shiftKey&&(e.key==="E"||e.key==="e")){ e.preventDefault(); var v=btn.hidden; try{ localStorage.setItem(FLAG,v?"1":"0"); }catch(x){} showBtn(v); if(!v) setOn(false); } });
+window.addEventListener("message",function(ev){ var d=ev.data; if(!d||d.app!=="mp") return;
+  if(d.editFor===MOD){ data=d.edits||{}; apply(); if(on) setOn(true); if(typeof d.editOn==="boolean"&&CFG.editable!==false) showBtn(d.editOn); }
+  if(typeof d.editOnly==="boolean"&&CFG.editable!==false) showBtn(d.editOnly);
+});
+if(inApp){ try{ parent.postMessage({app:"mp",editGet:MOD},"*"); }catch(e){} } else { try{ data=JSON.parse(localStorage.getItem(LSK)||"{}")||{}; }catch(e){ data={}; } apply(); }
+window.EDIT={on:function(){showBtn(true);setOn(true);},off:function(){setOn(false);},data:function(){return data;},bake:bake,count:count};
+})();
+</script><!--/EDIT-->

@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>뇌를 씻어내는 펌프: 1차 호흡과 뇌척수액 정화 (3편 - True 3D)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts: Noto Sans KR & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #040711;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-deep);
+      color: #F8FAFC;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 글래스모피즘 HUD 패널 */
+    .glass-panel {
+      background: rgba(8, 14, 28, 0.76);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.24);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* WebGL 캔버스 인터랙션 커서 */
+    #threeContainer canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #threeContainer canvas:active {
+      cursor: grabbing;
+    }
+
+    /* 3D 공간 투영 라벨 태그 */
+    .spatial-tag {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#040711]">
+
+  <!-- 상단 시네마틱 헤더 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 z-30">
+    <div class="flex items-center gap-3">
+      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono-tech font-bold bg-teal-500/20 text-teal-300 border border-teal-400/40 shadow-[0_0_15px_rgba(20,184,166,0.3)]">
+        TRUE 3D WEBGL · EPISODE 03 (FINALE)
+      </span>
+      <div>
+        <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-100">
+          뇌를 씻어내는 펌프: <span class="text-sky-400">뇌척수액(CSF)</span>과 <span class="text-emerald-300">글림프·면역 정화</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 hidden sm:block">좌클릭 드래그: 360° 3D 두개천골·뇌실 회전 · 휠/버튼: 줌 · Shift+드래그: 시점 이동</p>
+      </div>
+    </div>
+
+    <!-- 우측 오디오 및 3D 카메라 리셋 컨트롤 -->
+    <div class="flex items-center gap-2">
+      <button id="resetCameraBtn" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/35 flex items-center gap-1.5 transition cursor-pointer"
+        title="3D 카메라 시점 초기화">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="hidden sm:inline">3D 시점 정렬</span>
+      </button>
+
+      <!-- TTS 상태 표시 -->
+      <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+        <span id="ttsIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="ttsStatusText">한국어 음성 준비됨</span>
+      </div>
+
+      <!-- 음성 켜기/음소거 토글 -->
+      <button id="muteToggleBtn" type="button"
+        class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer">
+        <svg id="iconSoundOn" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        <svg id="iconSoundOff" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+        </svg>
+        <span id="muteBtnLabel">음성 ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 16:9 3D WebGL 애니메이션 무대 -->
+  <main class="flex-1 flex flex-col items-center justify-center p-2.5 sm:p-4 md:p-5">
+    <div class="w-full max-w-6xl bg-[#060A15] border border-slate-800/90 rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col relative">
+      
+      <!-- 챕터 네비게이션 탭 -->
+      <div class="grid grid-cols-5 border-b border-slate-800/90 bg-slate-950/90 text-[11px] sm:text-xs z-20">
+        <button data-scene="0" class="scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer">
+          01. 두개천골 펌프 리듬
+        </button>
+        <button data-scene="1" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          02. 호흡과 뇌척수액 파동
+        </button>
+        <button data-scene="2" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          03. 글림프 뇌 세척 작용
+        </button>
+        <button data-scene="3" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          04. 신경 염증↓·면역↑
+        </button>
+        <button data-scene="4" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          05. CSF 정화 시뮬레이터
+        </button>
+      </div>
+
+      <!-- 16:9 Three.js 3D 뷰포트 컨테이너 -->
+      <div id="viewportContainer" class="relative w-full aspect-video min-h-[460px] sm:min-h-[540px] bg-[#040711] overflow-hidden">
+        
+        <!-- Three.js WebGL 렌더링 타겟 -->
+        <div id="threeContainer" class="w-full h-full"></div>
+
+        <!-- 3D 좌표 투영 공간 라벨 레이어 -->
+        <div id="spatialLabelsLayer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+        <!-- 시작 오버레이 -->
+        <div id="startOverlay" class="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400/25 to-sky-400/15 border border-teal-400/50 flex items-center justify-center mb-4 shadow-[0_0_35px_rgba(20,184,166,0.4)]">
+            <svg class="w-8 h-8 text-teal-300" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <span class="text-xs font-mono-tech tracking-widest text-teal-400 uppercase mb-2">Episode 03 · Craniosacral, Glymphatic & Neuro-Immunity</span>
+          <h2 class="text-xl sm:text-3xl font-black text-white mb-3 tracking-tight">
+            뇌를 씻어내는 펌프: 1차 호흡과 뇌척수액 정화
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 max-w-xl mb-6 leading-relaxed">
+            깊은 호흡이 <span class="text-sky-400 font-semibold">두개골과 천골의 경막관(Dural Tube)</span>을 견인해 
+            <span class="text-cyan-300 font-semibold">뇌척수액(CSF)</span>을 순환시키고, 
+            <span class="text-emerald-300 font-semibold">글림프 시스템(Glymphatic System)</span>이 뇌의 대사 독소와 신경 염증을 씻어내어 
+            전신 면역력을 높이는 3D 메커니즘을 탐험하세요.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="startWithVoiceBtn" type="button"
+              class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-amber-500/30 flex items-center gap-2 transition transform hover:scale-105 cursor-pointer">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              음성 나레이션과 함께 3D 시작
+            </button>
+            <button id="startSilentBtn" type="button"
+              class="px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition cursor-pointer">
+              자막만으로 보기
+            </button>
+          </div>
+        </div>
+
+        <!-- 좌측 상단: 씬 타이틀 & 3D 카메라 인디케이터 -->
+        <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[60%]">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl glass-panel">
+            <span id="hudSceneNum" class="text-xs font-mono-tech font-bold text-amber-400">SCENE 01</span>
+            <span class="text-slate-600">|</span>
+            <span id="hudSceneTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">두개천골 리듬과 경막관 펌프</span>
+          </div>
+          <div id="hudSubBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-400/40 text-[11px] text-sky-200 w-fit backdrop-blur-sm">
+            <span>1차 호흡 메커니즘 (Craniosacral Pump)</span>
+          </div>
+          <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-950/70 text-[10px] font-mono-tech text-slate-400 w-fit">
+            <span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+            <span id="hudCameraInfo">3D CAM: CRANIUM-TO-SACRUM DURAL AXIS</span>
+          </div>
+        </div>
+
+        <!-- 우측 상단: 3D 줌 컨트롤 바 & 글림프·면역 텔레메트리 HUD -->
+        <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end gap-2">
+          <!-- 줌 컨트롤 바 -->
+          <div class="glass-panel rounded-xl px-2 py-1.5 flex items-center gap-1 pointer-events-auto shadow-lg">
+            <button id="zoomOutBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 축소 (−)">
+              −
+            </button>
+            <span id="zoomLevelLabel" class="px-2 min-w-[3.2rem] text-center font-mono-tech text-xs font-bold text-sky-300 select-none">
+              100%
+            </span>
+            <button id="zoomInBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 확대 (+)">
+              +
+            </button>
+            <div class="w-px h-4 bg-slate-700/80 mx-0.5"></div>
+            <button id="hudResetViewBtn" type="button"
+              class="px-2 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/30 flex items-center gap-1 text-[11px] font-medium transition active:scale-95 cursor-pointer"
+              title="3D 카메라 각도 및 거리 초기화 (더블클릭)">
+              <span>↺</span>
+              <span class="hidden sm:inline">초기화</span>
+            </button>
+          </div>
+
+          <!-- 뇌척수액·글림프·면역 텔레메트리 HUD -->
+          <div class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-48 sm:w-64 pointer-events-none">
+            <div class="text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
+              <span>GLYMPHATIC & IMMUNE HUD</span>
+              <span id="telemetryModeLabel" class="text-teal-300 font-bold">WASHING</span>
+            </div>
+
+            <!-- 뇌척수액(CSF) 순환 유속 -->
+            <div class="mb-2">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">뇌척수액(CSF) 펌핑</span>
+                <span id="hudCsfFlowVal" class="font-mono-tech font-bold text-sky-300">85% (활발)</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudCsfFlowBar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-150" style="width: 85%;"></div>
+              </div>
+            </div>
+
+            <!-- 글림프 독소 배출 효율 -->
+            <div class="mb-2">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">글림프 노폐물 정화</span>
+                <span id="hudClearanceVal" class="font-mono-tech font-bold text-emerald-300">88%</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudClearanceBar" class="h-full bg-gradient-to-r from-teal-500 to-emerald-300 transition-all duration-150" style="width: 88%;"></div>
+              </div>
+            </div>
+
+            <!-- 중추신경계 염증 수치 -->
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">신경 염증 수치</span>
+                <span id="hudInflammVal" class="font-mono-tech font-bold text-emerald-400">낮음 (면역 안정)</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudInflammBar" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-150" style="width: 20%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 좌측 플로팅 해부·생리 콜아웃 카드 -->
+        <div id="sceneFloatingInfo" class="hidden md:flex flex-col gap-2 absolute left-4 top-28 z-20 w-64 glass-panel rounded-xl p-3.5 pointer-events-none transition-all duration-300">
+          <div id="floatingCardTitle" class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span>두개골과 천골의 숨겨진 연결고리</span>
+          </div>
+          <p id="floatingCardBody" class="text-[11px] text-slate-300 leading-relaxed">
+            두개골의 후두골(대후두공)과 척추 맨 아래의 천골은 단단한 막인 '경막관(Dural Tube)'으로 직결되어, 호흡 리듬에 맞춰 함께 움직이며 뇌척수액을 펌핑합니다.
+          </p>
+        </div>
+
+        <!-- SCENE 4 전용: 뇌 정화 → 전신 면역력 향상 4단계 요약 카드 -->
+        <div id="scene4ImmuneSummary" class="hidden absolute right-4 bottom-24 sm:bottom-28 z-20 glass-panel rounded-xl p-3 w-64 sm:w-72 pointer-events-none">
+          <div class="text-[11px] font-bold text-teal-300 mb-1.5 border-b border-slate-800 pb-1">
+            뇌척수액 정화 → 전신 면역력 연쇄
+          </div>
+          <ul class="text-[11px] text-slate-200 space-y-1">
+            <li class="flex justify-between"><span class="text-sky-300 font-semibold">1. 호흡성 CSF 펌핑</span><span>뇌실·지주막하강 유속 증대</span></li>
+            <li class="flex justify-between"><span class="text-cyan-300 font-semibold">2. 글림프 세척</span><span>베타-아밀로이드·독소 배출</span></li>
+            <li class="flex justify-between"><span class="text-emerald-300 font-semibold">3. 신경 염증 억제</span><span>미세아교세포 과활성 진정</span></li>
+            <li class="flex justify-between"><span class="text-amber-300 font-semibold">4. 경부 림프 배출</span><span>면역세포 이동·항상성 극대화</span></li>
+          </ul>
+        </div>
+
+        <!-- SCENE 5 전용: 인터랙티브 뇌척수액·글림프 정화 시뮬레이터 -->
+        <div id="simulatorControls" class="hidden absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-3xl glass-panel rounded-2xl p-3 sm:p-3.5">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <!-- 호흡·정화 모드 선택 -->
+            <div class="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+              <span class="text-[11px] font-semibold text-slate-400 mr-1">정화 모드:</span>
+              <button type="button" data-preset="shallow" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                얕은 흉식 호흡 (독소 축적)
+              </button>
+              <button type="button" data-preset="deep" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-teal-500/25 text-teal-300 border border-teal-400/60 transition cursor-pointer">
+                깊은 복식 호흡 (글림프 세척)
+              </button>
+              <button type="button" data-preset="surge" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                수면·명상 파동 (최대 정화)
+              </button>
+            </div>
+
+            <!-- 독소 추가 / 리셋 버튼 -->
+            <button id="injectToxinsBtn" type="button"
+              class="w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-sky-400 to-teal-400 hover:from-sky-300 hover:to-teal-300 text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.35)] transition active:scale-95 cursor-pointer">
+              뇌 대사 노폐물 생성 후 세척 테스트
+            </button>
+          </div>
+        </div>
+
+        <!-- 하단 시네마틱 자막 오버레이 -->
+        <div class="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl pointer-events-none">
+          <div class="bg-slate-950/90 border border-slate-800/90 backdrop-blur-md rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-center shadow-2xl">
+            <p id="subtitleText" class="text-xs sm:text-sm md:text-base font-medium text-slate-100 leading-relaxed">
+              시작 버튼을 누르면 두개천골 리듬과 뇌척수액·글림프 정화 작용의 3D 애니메이션이 재생됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 플레이어 타임라인 및 컨트롤 바 -->
+      <div class="bg-slate-950 border-t border-slate-800/90 px-4 sm:px-6 py-3 flex flex-col gap-2.5 z-20">
+        <!-- 프로그레스 바 -->
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="sceneProgressBar" class="h-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 transition-all duration-150" style="width: 0%;"></div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <!-- 좌측 재생 컨트롤 -->
+          <div class="flex items-center gap-2">
+            <button id="prevSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="이전 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+
+            <button id="playPauseBtn" type="button"
+              class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer">
+              <svg id="iconPlay" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="iconPause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span id="playPauseLabel">재생</span>
+            </button>
+
+            <button id="nextSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="다음 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            <button id="replayNarrationBtn" type="button"
+              class="ml-1 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="현재 장면 다시 듣기">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <span class="hidden sm:inline">다시 듣기</span>
+            </button>
+          </div>
+
+          <!-- 우측 시리즈 완결 배지 & 카운터 -->
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="hidden md:inline text-teal-300 font-semibold">★ 3부작 시리즈 완결편 (1편 신경계 · 2편 산-염기 · 3편 뇌척수액·면역)</span>
+            <span class="font-mono-tech font-bold text-slate-200 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">
+              <span id="currentSceneCounter">1</span> / 5
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * 3편: 뇌를 씻어내는 펌프 — 1차 호흡과 뇌척수액 정화 (True 3D Three.js Engine)
+     * - 두개골(접형골·후두골) + 대뇌 피질 + 뇌실(Ventricles) + 경막관(Dural Tube) + 천골(Sacrum)
+     * - 깊은 호흡과 동기화된 두개천골 리듬(Craniosacral Coupling) 및 뇌척수액(CSF) 펌핑 파동
+     * - 글림프 시스템(Glymphatic System)의 혈관주위공간 유입 → 뇌 실질 내 노폐물(아밀로이드) 세척
+     * - 경부 심부 림프절(Deep Cervical Lymph Nodes) 배출 및 신경 염증 감소·전신 면역 활성화
+     * =========================================================================
+     */
+
+    const SCENES = [
+      {
+        id: 0,
+        num: "SCENE 01",
+        title: "두개천골 리듬과 경막관 펌프 (1차 호흡)",
+        badgeText: "두개골(굴곡/신전) ↔ 경막관 ↔ 천골(전굴/후굴)",
+        badgeClass: "bg-sky-500/20 border-sky-400/40 text-sky-200",
+        camInfo: "3D CAM: FULL CRANIOSACRAL AXIS",
+        cameraTarget: { theta: -0.38, phi: 1.44, radius: 13.8, targetX: 0, targetY: 0.2, targetZ: 0 },
+        cardTitle: "머리와 골반을 잇는 펌프 시스템",
+        cardColor: "text-sky-300",
+        cardBody: "우리 뇌와 척수는 두개골에서 천골까지 이어지는 질긴 막인 '경막관(Dural Tube)' 속에 잠겨 있습니다. 두개골의 미세한 확장·수축과 천골의 끄덕임이 뇌척수액을 순환시키는 거대한 펌프 역할을 합니다.",
+        durationMs: 15000,
+        subtitleHtml: "<span class='text-sky-400 font-bold'>두개골</span>과 골반의 <span class='text-indigo-300 font-bold'>천골</span>은 척추관을 지나는 <span class='text-cyan-300 font-bold'>경막관</span>으로 직결되어 있으며, 호흡과 연동된 리듬으로 <span class='text-emerald-300 font-bold'>뇌척수액(CSF)</span>을 펌핑합니다.",
+        narrationText: "우리 뇌와 척수는 두개골에서 척추 맨 아래 천골까지 이어지는 경막관이라는 막 속에 잠겨 있습니다. 두개골과 천골이 호흡 리듬에 맞춰 함께 움직이면서, 뇌를 보호하고 씻어내는 뇌척수액을 순환시키는 강력한 펌프 역할을 합니다."
+      },
+      {
+        id: 1,
+        num: "SCENE 02",
+        title: "깊은 호흡이 만드는 뇌척수액(CSF)의 역동적 파동",
+        badgeText: "흉강 음압 변화 → 정맥 환류 & CSF 상향 파동",
+        badgeClass: "bg-cyan-500/20 border-cyan-400/45 text-cyan-200",
+        camInfo: "3D CAM: VENTRICLES & SPINAL CSF SURGE",
+        cameraTarget: { theta: 0.35, phi: 1.32, radius: 10.2, targetX: 0, targetY: 1.45, targetZ: 0 },
+        cardTitle: "호흡은 뇌척수액 순환의 가장 강력한 엔진",
+        cardColor: "text-cyan-300",
+        cardBody: "깊은 들숨 시 흉강 내 음압이 커지며 척추 정맥총의 혈액이 심장으로 빠져나가고, 그 압력 차이에 의해 맑은 뇌척수액이 척추관과 뇌실 내부로 힘차게 밀려 올라가며 순환합니다.",
+        durationMs: 16000,
+        subtitleHtml: "깊은 호흡을 할 때마다 흉강 압력 변화와 경막관 견인이 결합하여, 뇌실과 척추관 속 <span class='text-cyan-300 font-bold'>뇌척수액(CSF)</span>이 위아래로 역동적인 파동을 그리며 순환합니다.",
+        narrationText: "깊고 느린 호흡을 할 때마다 흉강 내부의 압력 변화와 경막관의 움직임이 결합하여, 뇌실과 척추관 속 뇌척수액이 위아래로 역동적인 파동을 그리며 빠르고 원활하게 순환하게 됩니다."
+      },
+      {
+        id: 2,
+        num: "SCENE 03",
+        title: "글림프 시스템(Glymphatic System)의 뇌 정화 작용",
+        badgeText: "혈관주위공간 유입 → 대사 독소·베타-아밀로이드 세척",
+        badgeClass: "bg-teal-500/20 border-teal-400/45 text-teal-200",
+        camInfo: "3D CAM: CEREBRAL CORTEX · GLYMPHATIC WASH",
+        cameraTarget: { theta: -0.28, phi: 1.24, radius: 7.4, targetX: 0, targetY: 2.95, targetZ: 0.1 },
+        cardTitle: "뇌 속 노폐물을 씻어내는 야간 청소부",
+        cardColor: "text-teal-300",
+        cardBody: "뇌에는 일반 림프관이 없는 대신, 별아교세포의 아쿠아포린-4 통로를 통해 뇌척수액이 뇌 실질 깊숙이 스며들어 베타-아밀로이드와 대사 독소를 씻어내는 '글림프 시스템'이 작동합니다.",
+        durationMs: 17500,
+        subtitleHtml: "원활해진 뇌척수액 파동은 <span class='text-teal-300 font-bold'>글림프 시스템</span>을 통해 뇌 조직 사이로 스며들어, 뇌세포에 쌓인 <span class='text-amber-300 font-bold'>대사 독소와 노폐물</span>을 깨끗하게 씻어냅니다.",
+        narrationText: "뇌척수액 순환이 원활해지면, 뇌의 특수 청소 시스템인 글림프 시스템을 통해 맑은 뇌척수액이 뇌 조직 깊숙이 스며듭니다. 이 물줄기는 뇌 활동 중에 쌓인 베타 아밀로이드 같은 대사 독소와 노폐물을 깨끗하게 씻어냅니다."
+      },
+      {
+        id: 3,
+        num: "SCENE 04",
+        title: "신경 염증 감소와 전신 면역력 향상",
+        badgeText: "신경 염증 진정 → 경부 림프 배출 · 면역 항상성 극대화",
+        badgeClass: "bg-emerald-500/20 border-emerald-400/45 text-emerald-200",
+        camInfo: "3D CAM: CERVICAL LYMPH NODES & NEURO-IMMUNITY",
+        cameraTarget: { theta: 0.28, phi: 1.36, radius: 9.6, targetX: 0, targetY: 1.65, targetZ: 0.1 },
+        cardTitle: "뇌의 정화가 전신 면역력을 깨우는 원리",
+        cardColor: "text-emerald-300",
+        cardBody: "독소가 제거되면 중추신경계의 염증 반응(미세아교세포 과활성)이 가라앉고, 노폐물을 머금은 액체가 목의 경부 심부 림프절로 배출되면서 전신 면역 세포의 이동과 항상성이 극대화됩니다.",
+        durationMs: 18500,
+        subtitleHtml: "뇌 정화 작용으로 <span class='text-rose-300 font-bold'>신경계의 염증</span>이 낮아지고, 경부 <span class='text-emerald-300 font-bold'>림프 순환</span>이 촉진되면서 면역 세포의 이동과 활성화가 극대화되어 <span class='text-amber-300 font-bold'>전신 면역 항상성</span>이 높아집니다.",
+        narrationText: "글림프 시스템을 통해 독소를 배출함으로써 중추신경계의 염증 반응이 현저히 낮아집니다. 동시에 노폐물이 목의 림프 순환으로 원활히 빠져나가면서, 면역 세포의 이동과 활성화가 극대화되어 신체 전반의 면역 항상성이 높아지는 것입니다."
+      },
+      {
+        id: 4,
+        num: "SCENE 05",
+        title: "인터랙티브 3D 뇌척수액 · 글림프 정화 시뮬레이터",
+        badgeText: "호흡 깊이 조절 → CSF 파동 · 독소 세척 · 신경 염증 변화 체험",
+        badgeClass: "bg-teal-500/25 border-teal-400/50 text-teal-200",
+        camInfo: "3D CAM: INTERACTIVE GLYMPHATIC LAB · DRAG TO ORBIT",
+        cameraTarget: { theta: 0.15, phi: 1.35, radius: 10.6, targetX: 0, targetY: 1.25, targetZ: 0 },
+        cardTitle: "호흡 깊이에 따른 뇌 정화 속도 비교",
+        cardColor: "text-teal-300",
+        cardBody: "하단에서 '얕은 흉식 호흡'과 '깊은 복식 호흡'을 번갈아 눌러보세요. 깊은 호흡 시 두개골-천골 리듬이 커지면서 뇌 속 붉은 노폐물 입자들이 빠르게 씻겨 내려가는 과정을 확인할 수 있습니다.",
+        durationMs: 999999,
+        subtitleHtml: "하단 버튼으로 <span class='text-teal-300 font-bold'>호흡 깊이</span>를 바꾸거나 <span class='text-amber-300 font-bold'>뇌 노폐물 생성 버튼</span>을 눌러, 뇌척수액 파동이 독소와 염증을 씻어내는 과정을 3D로 체험해 보세요.",
+        narrationText: "이제 직접 호흡 깊이에 따른 뇌 정화 과정을 체험해 보세요. 하단에서 얕은 호흡과 깊은 복식 호흡을 전환하거나 노폐물 생성 버튼을 눌러, 뇌척수액의 파동이 뇌의 독소와 염증을 어떻게 씻어내는지 입체적으로 확인해 보세요."
+      }
+    ];
+
+    // 전역 상태 객체
+    const state = {
+      currentScene: 0,
+      isPlaying: false,
+      hasStarted: false,
+      isMuted: false,
+      sceneElapsedMs: 0,
+      lastFrameTime: performance.now(),
+
+      // 3D 구면 궤도 카메라 상태
+      cam: {
+        theta: -0.38,
+        phi: 1.44,
+        radius: 13.8,
+        targetX: 0,
+        targetY: 0.2,
+        targetZ: 0,
+
+        userThetaOffset: 0,
+        userPhiOffset: 0,
+        userZoomMult: 1.0,
+        targetUserZoomMult: 1.0,
+        userPanX: 0,
+        userPanY: 0,
+        targetUserPanX: 0,
+        targetUserPanY: 0,
+
+        dragMode: null,
+        dragStartX: 0,
+        dragStartY: 0,
+        pinchStartDist: 0,
+        pinchStartZoom: 1.0,
+        pinchCenterX: 0,
+        pinchCenterY: 0
+      },
+
+      // 두개천골 · 글림프 · 면역 물리 상태
+      glymph: {
+        pumpDepth: 0.82,        // 0.2(얕은 호흡) ~ 1.0(깊은 복식/명상 호흡)
+        targetPumpDepth: 0.82,
+        rhythmPhase: 0,
+        breathWave: 0,          // -1 ~ +1
+        csfVelocity: 0.85,      // 0.15 ~ 1.0
+        clearanceRate: 0.88,    // 0.15 ~ 1.0
+        neuroInflammation: 0.20 // 0.12(낮음/안정) ~ 0.92(높음/염증)
+      },
+
+      simPreset: 'deep'
+    };
+
+    // DOM 참조
+    const dom = {
+      viewport: document.getElementById('viewportContainer'),
+      threeContainer: document.getElementById('threeContainer'),
+      spatialLabelsLayer: document.getElementById('spatialLabelsLayer'),
+      startOverlay: document.getElementById('startOverlay'),
+      startWithVoiceBtn: document.getElementById('startWithVoiceBtn'),
+      startSilentBtn: document.getElementById('startSilentBtn'),
+      resetCameraBtn: document.getElementById('resetCameraBtn'),
+      zoomInBtn: document.getElementById('zoomInBtn'),
+      zoomOutBtn: document.getElementById('zoomOutBtn'),
+      zoomLevelLabel: document.getElementById('zoomLevelLabel'),
+      hudResetViewBtn: document.getElementById('hudResetViewBtn'),
+      muteToggleBtn: document.getElementById('muteToggleBtn'),
+      iconSoundOn: document.getElementById('iconSoundOn'),
+      iconSoundOff: document.getElementById('iconSoundOff'),
+      muteBtnLabel: document.getElementById('muteBtnLabel'),
+      ttsStatusText: document.getElementById('ttsStatusText'),
+      ttsIndicatorDot: document.getElementById('ttsIndicatorDot'),
+
+      sceneTabs: document.querySelectorAll('.scene-tab'),
+      hudSceneNum: document.getElementById('hudSceneNum'),
+      hudSceneTitle: document.getElementById('hudSceneTitle'),
+      hudSubBadge: document.getElementById('hudSubBadge'),
+      hudCameraInfo: document.getElementById('hudCameraInfo'),
+
+      telemetryModeLabel: document.getElementById('telemetryModeLabel'),
+      hudCsfFlowVal: document.getElementById('hudCsfFlowVal'),
+      hudCsfFlowBar: document.getElementById('hudCsfFlowBar'),
+      hudClearanceVal: document.getElementById('hudClearanceVal'),
+      hudClearanceBar: document.getElementById('hudClearanceBar'),
+      hudInflammVal: document.getElementById('hudInflammVal'),
+      hudInflammBar: document.getElementById('hudInflammBar'),
+
+      floatingCardTitle: document.getElementById('floatingCardTitle'),
+      floatingCardBody: document.getElementById('floatingCardBody'),
+      scene4ImmuneSummary: document.getElementById('scene4ImmuneSummary'),
+      simulatorControls: document.getElementById('simulatorControls'),
+      injectToxinsBtn: document.getElementById('injectToxinsBtn'),
+
+      subtitleText: document.getElementById('subtitleText'),
+      sceneProgressBar: document.getElementById('sceneProgressBar'),
+      prevSceneBtn: document.getElementById('prevSceneBtn'),
+      playPauseBtn: document.getElementById('playPauseBtn'),
+      iconPlay: document.getElementById('iconPlay'),
+      iconPause: document.getElementById('iconPause'),
+      playPauseLabel: document.getElementById('playPauseLabel'),
+      nextSceneBtn: document.getElementById('nextSceneBtn'),
+      replayNarrationBtn: document.getElementById('replayNarrationBtn'),
+      currentSceneCounter: document.getElementById('currentSceneCounter'),
+      presetBtns: document.querySelectorAll('.sim-preset-btn')
+    };
+
+    /**
+     * =========================================================================
+     * Three.js 3D 씬 구축: 두개골 · 대뇌 피질 · 뇌실 · 경막관 · 천골 · 글림프 독소 · 경부 림프
+     * =========================================================================
+     */
+    let scene3D, camera3D, renderer3D;
+    const neuro3D = {
+      rootGroup: null,
+      craniumGroup: null,     // 상단 두개골 + 대뇌 + 뇌실 그룹 (Y = +2.85)
+      craniumShell: null,
+      cortexLeft: null,
+      cortexRight: null,
+      cortexMat: null,
+      ventriclesMesh: null,   // 뇌척수액 생성 허브(측뇌실·제3·제4뇌실)
+      ventriclesMat: null,
+      occiputRing: null,
+      sacrumGroup: null,      // 하단 천골 3D 모델 (Y = -3.75)
+      duralTubeMesh: null,    // 두개골-천골 직결 경막관 (Dural Tube)
+      duralTubeMat: null,
+      csfSpinalParticles: [], // 척추관 경막 내부 상하 순환 CSF 입자
+      glymphWashParticles: [],// 대뇌 실질을 가로지르며 씻어내는 글림프 물줄기 입자
+      toxinParticles: [],     // 뇌 조직 속 대사 노폐물(베타-아밀로이드) 입자
+      cervicalLymphGroup: null,// 경부 심부 림프절 & 면역 세포 이동 경로
+      lymphNodeMats: [],
+      immuneParticles: [],    // 경부 림프절을 통해 전신으로 활성화되는 면역 세포 입자
+      ambientStars: null
+    };
+
+    // 3D 공간 좌표 라벨
+    const spatialLabelNodes = {};
+    const SPATIAL_LABEL_DEFS = [
+      { id: 'cranium',   scenes: [0, 1],       text: '두개골 (굴곡/신전 펌프)',        color: '#38BDF8', pos: new THREE.Vector3(-1.45, 3.85, 0.35) },
+      { id: 'ventricle', scenes: [1, 2],       text: '뇌실 (CSF 생성·맥락총)',         color: '#22D3EE', pos: new THREE.Vector3(1.25, 3.05, 0.45) },
+      { id: 'duralTube', scenes: [0, 1],       text: '경막관 (Dural Tube · CSF 순환)', color: '#7DD3FC', pos: new THREE.Vector3(1.15, -0.35, -0.25) },
+      { id: 'sacrum',    scenes: [0, 1],       text: '천골 (전굴/후굴 동기화)',         color: '#A5B4FC', pos: new THREE.Vector3(-1.15, -3.75, -0.45) },
+      { id: 'glymph',    scenes: [2, 4],       text: '글림프 시스템 (뇌 독소 세척)',   color: '#2DD4BF', pos: new THREE.Vector3(-1.55, 2.85, 0.65) },
+      { id: 'toxins',    scenes: [2, 3, 4],    text: '대사 독소 / 신경 염증',          color: '#FDA4AF', pos: new THREE.Vector3(1.45, 2.45, 0.55) },
+      { id: 'lymph',     scenes: [3, 4],       text: '경부 심부 림프절 (면역 활성화)', color: '#34D399', pos: new THREE.Vector3(1.25, 0.95, 0.35) }
+    ];
+
+    function initThree3D() {
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+
+      scene3D = new THREE.Scene();
+      scene3D.fog = new THREE.FogExp2(0x040711, 0.028);
+
+      camera3D = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+
+      renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer3D.setSize(width, height);
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer3D.toneMappingExposure = 1.2;
+      dom.threeContainer.appendChild(renderer3D.domElement);
+
+      // 3점 시네마틱 조명
+      const ambientLight = new THREE.AmbientLight(0x1e293b, 1.45);
+      scene3D.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xe0f2fe, 1.7);
+      keyLight.position.set(5, 9, 8);
+      scene3D.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x2dd4bf, 1.3);
+      rimLight.position.set(-7, 4, -7);
+      scene3D.add(rimLight);
+
+      const bottomLight = new THREE.DirectionalLight(0x818cf8, 0.65);
+      bottomLight.position.set(0, -8, 4);
+      scene3D.add(bottomLight);
+
+      // 홀로그램 바닥 기준 링
+      const floorGroup = new THREE.Group();
+      floorGroup.position.y = -4.4;
+      [2.0, 3.3, 4.6].forEach((r, idx) => {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(r - 0.02, r + 0.02, 64),
+          new THREE.MeshBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.22 - idx * 0.05, side: THREE.DoubleSide })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        floorGroup.add(ring);
+      });
+      scene3D.add(floorGroup);
+
+      // 공간 부유 입자
+      const starCount = 240;
+      const starGeo = new THREE.BufferGeometry();
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 22;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 18;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 22;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0x5eead4, size: 0.08, transparent: true, opacity: 0.42 });
+      neuro3D.ambientStars = new THREE.Points(starGeo, starMat);
+      scene3D.add(neuro3D.ambientStars);
+
+      // 3D 해부 모델 조립
+      neuro3D.rootGroup = new THREE.Group();
+      scene3D.add(neuro3D.rootGroup);
+
+      buildCraniumAndBrain3D();
+      buildSpineDuralAndSacrum3D();
+      buildGlymphaticAndToxins3D();
+      buildCervicalLymphAndImmune3D();
+      initSpatialLabels();
+
+      window.addEventListener('resize', onViewportResize);
+    }
+
+    function onViewportResize() {
+      if (!renderer3D || !camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+      camera3D.aspect = width / height;
+      camera3D.updateProjectionMatrix();
+      renderer3D.setSize(width, height);
+    }
+
+    /**
+     * (A) 두개골(Cranium) · 대뇌 반구(Cerebral Hemispheres) · 발광 뇌실(Ventricles)
+     */
+    function buildCraniumAndBrain3D() {
+      neuro3D.craniumGroup = new THREE.Group();
+      neuro3D.craniumGroup.position.set(0, 2.85, 0.05);
+
+      // 1. 반투명 두개골 외곽 돔
+      const shellGeo = new THREE.SphereGeometry(1.78, 36, 28);
+      shellGeo.scale(1.06, 0.94, 1.28);
+      const shellMat = new THREE.MeshPhysicalMaterial({
+        color: 0xbae6fd,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.22,
+        roughness: 0.22,
+        clearcoat: 0.85,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false
+      });
+      neuro3D.craniumShell = new THREE.Mesh(shellGeo, shellMat);
+      neuro3D.craniumGroup.add(neuro3D.craniumShell);
+
+      // 2. 좌우 대뇌 반구 (Cerebral Cortex - 반투명 신경 실질)
+      neuro3D.cortexMat = new THREE.MeshPhysicalMaterial({
+        color: 0x94a3b8,
+        emissive: 0x0f766e,
+        emissiveIntensity: 0.28,
+        roughness: 0.35,
+        clearcoat: 0.6,
+        transparent: true,
+        opacity: 0.38,
+        depthWrite: false
+      });
+
+      const hemiGeo = new THREE.SphereGeometry(1.28, 32, 24);
+      hemiGeo.scale(0.68, 0.84, 1.22);
+
+      neuro3D.cortexLeft = new THREE.Mesh(hemiGeo, neuro3D.cortexMat);
+      neuro3D.cortexLeft.position.set(-0.56, 0.08, 0.04);
+      neuro3D.craniumGroup.add(neuro3D.cortexLeft);
+
+      neuro3D.cortexRight = new THREE.Mesh(hemiGeo, neuro3D.cortexMat);
+      neuro3D.cortexRight.position.set(0.56, 0.08, 0.04);
+      neuro3D.craniumGroup.add(neuro3D.cortexRight);
+
+      // 3. 중앙 발광 뇌실 (Lateral & Third Ventricles - CSF 생성 허브)
+      const ventGeo = new THREE.SphereGeometry(0.62, 24, 20);
+      ventGeo.scale(0.88, 0.72, 1.35);
+      neuro3D.ventriclesMat = new THREE.MeshPhysicalMaterial({
+        color: 0x22d3ee,
+        emissive: 0x06b6d4,
+        emissiveIntensity: 0.95,
+        roughness: 0.15,
+        clearcoat: 0.95,
+        transparent: true,
+        opacity: 0.86
+      });
+      neuro3D.ventriclesMesh = new THREE.Mesh(ventGeo, neuro3D.ventriclesMat);
+      neuro3D.ventriclesMesh.position.set(0, 0.05, 0.05);
+      neuro3D.craniumGroup.add(neuro3D.ventriclesMesh);
+
+      // 4. 후두골 대후두공 링 (경막관 상단 부착부)
+      const occGeo = new THREE.TorusGeometry(0.45, 0.065, 14, 28);
+      const occMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.75
+      });
+      neuro3D.occiputRing = new THREE.Mesh(occGeo, occMat);
+      neuro3D.occiputRing.rotation.x = Math.PI / 2;
+      neuro3D.occiputRing.position.set(0, -1.25, -0.35);
+      neuro3D.craniumGroup.add(neuro3D.occiputRing);
+
+      neuro3D.rootGroup.add(neuro3D.craniumGroup);
+    }
+
+    /**
+     * (B) 척추 기둥 · 경막관(Dural Tube) · 천골(Sacrum) · 척수 뇌척수액(CSF) 순환 입자
+     */
+    function buildSpineDuralAndSacrum3D() {
+      // 반투명 척추 마디 16분절
+      const vertGeo = new THREE.CylinderGeometry(0.34, 0.38, 0.3, 16);
+      const vertMat = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        roughness: 0.5,
+        transparent: true,
+        opacity: 0.34
+      });
+      for (let i = 0; i < 16; i++) {
+        const v = new THREE.Mesh(vertGeo, vertMat);
+        v.position.set(0, 1.45 - i * 0.32, -0.45 + Math.sin(i * 0.35) * 0.1);
+        neuro3D.rootGroup.add(v);
+      }
+
+      // 경막관 (Dural Tube: 후두골 Y=+1.60 → 천골 Y=-3.55 직결)
+      const duralCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 1.65, -0.32),
+        new THREE.Vector3(0, 0.2, -0.42),
+        new THREE.Vector3(0, -1.5, -0.48),
+        new THREE.Vector3(0, -3.55, -0.42)
+      ]);
+      const duralGeo = new THREE.TubeGeometry(duralCurve, 48, 0.22, 20, false);
+      neuro3D.duralTubeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.45,
+        roughness: 0.2,
+        clearcoat: 0.85,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false
+      });
+      neuro3D.duralTubeMesh = new THREE.Mesh(duralGeo, neuro3D.duralTubeMat);
+      neuro3D.rootGroup.add(neuro3D.duralTubeMesh);
+
+      // 경막관 내부 척수액(CSF) 상하 펌핑 입자 36개
+      const csfMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
+      for (let i = 0; i < 36; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.068, 10, 10), csfMat);
+        const angle = (i / 36) * Math.PI * 6;
+        neuro3D.rootGroup.add(p);
+        neuro3D.csfSpinalParticles.push({
+          mesh: p,
+          curve: duralCurve,
+          t: Math.random(),
+          dir: i % 2 === 0 ? 1 : -1,
+          radX: Math.cos(angle) * 0.11,
+          radZ: Math.sin(angle) * 0.11,
+          speed: 0.22 + Math.random() * 0.18
+        });
+      }
+
+      // 하단 천골 (Sacrum - Y = -3.75, 역삼각형 쐐기 뼈 + 천장관절 피벗)
+      neuro3D.sacrumGroup = new THREE.Group();
+      neuro3D.sacrumGroup.position.set(0, -3.75, -0.42);
+
+      const sacGeo = new THREE.ConeGeometry(0.75, 1.32, 6);
+      sacGeo.rotateX(Math.PI);
+      sacGeo.scale(1.18, 1.0, 0.45);
+      const sacMat = new THREE.MeshPhysicalMaterial({
+        color: 0x818cf8,
+        emissive: 0x4f46e5,
+        emissiveIntensity: 0.45,
+        roughness: 0.3,
+        clearcoat: 0.7,
+        transparent: true,
+        opacity: 0.88
+      });
+      neuro3D.sacrumGroup.add(new THREE.Mesh(sacGeo, sacMat));
+
+      const pivotRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.52, 0.045, 10, 24),
+        new THREE.MeshBasicMaterial({ color: 0xa5b4fc, transparent: true, opacity: 0.65 })
+      );
+      pivotRing.rotation.x = Math.PI / 2;
+      pivotRing.position.y = 0.42;
+      neuro3D.sacrumGroup.add(pivotRing);
+
+      neuro3D.rootGroup.add(neuro3D.sacrumGroup);
+    }
+
+    /**
+     * (C) 글림프 시스템(Glymphatic Wash) 물줄기 & 대사 노폐물(베타-아밀로이드) 입자
+     */
+    function buildGlymphaticAndToxins3D() {
+      // 1. 뇌실(중앙)에서 대뇌 피질 외곽 지주막하강으로 방사형 세척하는 글림프 유체 입자 48개
+      const washMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf });
+      for (let i = 0; i < 48; i++) {
+        const w = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 10), washMat);
+        neuro3D.craniumGroup.add(w);
+
+        // 구면 방사형 방향 벡터
+        const theta = Math.random() * Math.PI * 2;
+        const phi = 0.25 + Math.random() * (Math.PI - 0.5);
+        const dir = new THREE.Vector3(
+          Math.sin(phi) * Math.cos(theta) * 1.15,
+          Math.cos(phi) * 0.95,
+          Math.sin(phi) * Math.sin(theta) * 1.35
+        );
+        neuro3D.glymphWashParticles.push({
+          mesh: w,
+          dir,
+          t: Math.random(),
+          speed: 0.35 + Math.random() * 0.25
+        });
+      }
+
+      // 2. 뇌 조직 내 대사 노폐물 / 신경 염증 유발 입자 (붉은색/주황색 불규칙 입자 38개)
+      const toxinMat = new THREE.MeshStandardMaterial({
+        color: 0xf43f5e,
+        emissive: 0xe11d48,
+        emissiveIntensity: 0.95
+      });
+      for (let i = 0; i < 38; i++) {
+        const tx = new THREE.Mesh(new THREE.DodecahedronGeometry(0.088, 0), toxinMat);
+        const theta = Math.random() * Math.PI * 2;
+        const phi = 0.3 + Math.random() * (Math.PI - 0.6);
+        const r = 0.55 + Math.random() * 0.72;
+        const basePos = new THREE.Vector3(
+          Math.sin(phi) * Math.cos(theta) * r * 1.1,
+          Math.cos(phi) * r * 0.9,
+          Math.sin(phi) * Math.sin(theta) * r * 1.25
+        );
+        tx.position.copy(basePos);
+        neuro3D.craniumGroup.add(tx);
+        neuro3D.toxinParticles.push({
+          mesh: tx,
+          basePos,
+          phase: Math.random() * Math.PI * 2,
+          threshold: i / 38
+        });
+      }
+    }
+
+    /**
+     * (D) 경부 심부 림프절(Deep Cervical Lymph Nodes) & 전신 면역 세포 이동 경로
+     */
+    function buildCervicalLymphAndImmune3D() {
+      neuro3D.cervicalLymphGroup = new THREE.Group();
+
+      // 좌우 경부 림프관 튜브 (두개골 기저부 Y=+1.65 → 경부·쇄골하 림프 본관 Y=-0.45)
+      [-1, 1].forEach(side => {
+        const lymphCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(side * 0.65, 1.75, 0.15),
+          new THREE.Vector3(side * 0.92, 1.05, 0.25),
+          new THREE.Vector3(side * 1.05, 0.25, 0.22),
+          new THREE.Vector3(side * 0.75, -0.55, 0.18)
+        ]);
+        const tubeGeo = new THREE.TubeGeometry(lymphCurve, 32, 0.048, 10, false);
+        const tubeMat = new THREE.MeshStandardMaterial({
+          color: 0x34d399,
+          emissive: 0x059669,
+          emissiveIntensity: 0.65
+        });
+        neuro3D.cervicalLymphGroup.add(new THREE.Mesh(tubeGeo, tubeMat));
+
+        // 림프절(Lymph Nodes) 3개씩 배치
+        [0.25, 0.55, 0.85].forEach(tPos => {
+          const pt = lymphCurve.getPoint(tPos);
+          const nodeMat = new THREE.MeshPhysicalMaterial({
+            color: 0x6ee7b7,
+            emissive: 0x10b981,
+            emissiveIntensity: 0.85,
+            roughness: 0.25
+          });
+          neuro3D.lymphNodeMats.push(nodeMat);
+          const nodeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), nodeMat);
+          nodeMesh.scale.set(0.85, 1.25, 0.85);
+          nodeMesh.position.copy(pt);
+          neuro3D.cervicalLymphGroup.add(nodeMesh);
+        });
+
+        // 경부 림프관을 타고 하방(전신 순환계)으로 이동하는 활성 면역 세포 입자 14개씩
+        const immMat = new THREE.MeshBasicMaterial({ color: 0xa7f3d0 });
+        for (let k = 0; k < 14; k++) {
+          const im = new THREE.Mesh(new THREE.SphereGeometry(0.072, 10, 10), immMat);
+          neuro3D.cervicalLymphGroup.add(im);
+          neuro3D.immuneParticles.push({
+            mesh: im,
+            curve: lymphCurve,
+            t: Math.random(),
+            speed: 0.28 + Math.random() * 0.22
+          });
+        }
+      });
+
+      neuro3D.rootGroup.add(neuro3D.cervicalLymphGroup);
+    }
+
+    /**
+     * 3D 월드 좌표 라벨 초기화 및 실시간 투영 업데이트
+     */
+    function initSpatialLabels() {
+      dom.spatialLabelsLayer.innerHTML = '';
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'spatial-tag px-2.5 py-1 rounded-lg bg-slate-950/85 border text-[11px] font-bold shadow-lg backdrop-blur-sm flex items-center gap-1.5';
+        el.style.borderColor = def.color;
+        el.style.color = def.color;
+        el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full" style="background:${def.color}"></span><span>${def.text}</span>`;
+        dom.spatialLabelsLayer.appendChild(el);
+        spatialLabelNodes[def.id] = el;
+      });
+    }
+
+    function updateSpatialLabelsProjection() {
+      if (!camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+
+      const isWashing = state.glymph.clearanceRate > 0.55;
+
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = spatialLabelNodes[def.id];
+        if (!el) return;
+
+        if (!def.scenes.includes(state.currentScene)) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        if (def.id === 'toxins') {
+          el.innerHTML = isWashing
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-teal-400"></span><span>뇌 독소 세척 완료 (염증 ↓)</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span><span>대사 노폐물 축적 (신경 염증 ↑)</span>`;
+          el.style.color = isWashing ? '#5EEAD4' : '#FDA4AF';
+          el.style.borderColor = isWashing ? '#2DD4BF' : '#FB7185';
+        }
+
+        const worldPos = def.pos.clone();
+        worldPos.project(camera3D);
+
+        if (worldPos.z > 1) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        const screenX = (worldPos.x * 0.5 + 0.5) * W;
+        const screenY = (-worldPos.y * 0.5 + 0.5) * H;
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        el.style.opacity = '0.95';
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 씬별 두개천골 · 글림프 · 면역 시뮬레이션 및 3D 메시 업데이트
+     * =========================================================================
+     */
+    function updateSimulationAnd3D(dt, now) {
+      // 1. 카메라 목표 보간
+      const target = SCENES[state.currentScene].cameraTarget;
+      const lerp = 1 - Math.exp(-dt * 0.0042);
+
+      state.cam.theta += (target.theta - state.cam.theta) * lerp;
+      state.cam.phi += (target.phi - state.cam.phi) * lerp;
+      state.cam.radius += (target.radius - state.cam.radius) * lerp;
+      state.cam.targetX += (target.targetX - state.cam.targetX) * lerp;
+      state.cam.targetY += (target.targetY - state.cam.targetY) * lerp;
+      state.cam.targetZ += (target.targetZ - state.cam.targetZ) * lerp;
+
+      const userLerp = 1 - Math.exp(-dt * 0.014);
+      state.cam.userZoomMult += (state.cam.targetUserZoomMult - state.cam.userZoomMult) * userLerp;
+      state.cam.userPanX += (state.cam.targetUserPanX - state.cam.userPanX) * userLerp;
+      state.cam.userPanY += (state.cam.targetUserPanY - state.cam.userPanY) * userLerp;
+
+      if (dom.zoomLevelLabel) {
+        dom.zoomLevelLabel.textContent = `${Math.round(state.cam.userZoomMult * 100)}%`;
+      }
+
+      if (!state.cam.dragMode) {
+        state.cam.theta += Math.sin(now * 0.0006) * 0.0004;
+      }
+
+      const effTheta = state.cam.theta + state.cam.userThetaOffset;
+      const effPhi = Math.max(0.35, Math.min(2.65, state.cam.phi + state.cam.userPhiOffset));
+      const effRadius = Math.max(3.6, Math.min(22.0, state.cam.radius / state.cam.userZoomMult));
+
+      const lookX = state.cam.targetX + state.cam.userPanX;
+      const lookY = state.cam.targetY + state.cam.userPanY;
+      const lookZ = state.cam.targetZ;
+
+      camera3D.position.set(
+        lookX + effRadius * Math.sin(effPhi) * Math.sin(effTheta),
+        lookY + effRadius * Math.cos(effPhi),
+        lookZ + effRadius * Math.sin(effPhi) * Math.cos(effTheta)
+      );
+      camera3D.lookAt(lookX, lookY, lookZ);
+
+      // 2. 씬별 펌프 깊이(Pump Depth) 설정
+      if (state.currentScene === 0) {
+        state.glymph.targetPumpDepth = 0.78;
+      } else if (state.currentScene === 1) {
+        state.glymph.targetPumpDepth = 0.88;
+      } else if (state.currentScene === 2) {
+        state.glymph.targetPumpDepth = 0.92;
+      } else if (state.currentScene === 3) {
+        state.glymph.targetPumpDepth = 0.96;
+      }
+
+      state.glymph.pumpDepth += (state.glymph.targetPumpDepth - state.glymph.pumpDepth) * 0.04;
+      const pDepth = state.glymph.pumpDepth;
+
+      // 호흡 & 두개천골 리듬 파동 (0 ~ 1)
+      state.glymph.rhythmPhase += (dt / 1000) * (1.15 + (1 - pDepth) * 1.4);
+      const b = 0.5 + 0.5 * Math.sin(state.glymph.rhythmPhase);
+      state.glymph.breathWave = b;
+
+      // CSF 유속 & 글림프 정화율 & 신경 염증 수치 업데이트
+      state.glymph.csfVelocity += (pDepth - state.glymph.csfVelocity) * 0.04;
+      const targetClearance = pDepth;
+      state.glymph.clearanceRate += (targetClearance - state.glymph.clearanceRate) * 0.015;
+      state.glymph.neuroInflammation = Math.max(0.12, 1.02 - state.glymph.clearanceRate * 0.88);
+
+      // 3. 3D 메시 애니메이션 적용
+      applyGlymphTo3DMeshes(dt, now);
+      syncGlymphHUD();
+      updateSpatialLabelsProjection();
+    }
+
+    function applyGlymphTo3DMeshes(dt, now) {
+      const b = state.glymph.breathWave;       // 0(신전/날숨) ~ 1(굴곡/들숨)
+      const pDepth = state.glymph.pumpDepth;
+      const csfVel = state.glymph.csfVelocity;
+      const clearRate = state.glymph.clearanceRate;
+      const inflamm = state.glymph.neuroInflammation;
+
+      // (1) 두개골 굴곡/신전(Flexion/Extension) 리듬
+      if (neuro3D.craniumGroup && neuro3D.craniumShell) {
+        const amp = 0.04 + pDepth * 0.08;
+        neuro3D.craniumGroup.rotation.x = -b * amp;
+        neuro3D.craniumGroup.position.y = 2.85 + b * (0.04 + pDepth * 0.07);
+        neuro3D.craniumShell.scale.set(
+          1.06 + b * (0.03 + pDepth * 0.05),
+          0.94 - b * 0.02,
+          1.28 - b * (0.025 + pDepth * 0.04)
+        );
+      }
+
+      // (2) 대뇌 피질 색조 (염증 높으면 붉은 기운, 정화되면 맑은 청록/에메랄드 빛)
+      if (neuro3D.cortexMat) {
+        if (inflamm > 0.55) {
+          neuro3D.cortexMat.color.setHex(0xfda4af);
+          neuro3D.cortexMat.emissive.setHex(0x9f1239);
+          neuro3D.cortexMat.emissiveIntensity = 0.25 + inflamm * 0.45;
+        } else {
+          neuro3D.cortexMat.color.setHex(0x99f6e4);
+          neuro3D.cortexMat.emissive.setHex(0x0f766e);
+          neuro3D.cortexMat.emissiveIntensity = 0.25 + clearRate * 0.42;
+        }
+      }
+
+      // (3) 발광 뇌실(Ventricles) 펌핑 팽창
+      if (neuro3D.ventriclesMesh && neuro3D.ventriclesMat) {
+        const vs = 0.92 + b * (0.1 + pDepth * 0.16);
+        neuro3D.ventriclesMesh.scale.set(vs, vs, vs);
+        neuro3D.ventriclesMat.emissiveIntensity = 0.55 + csfVel * 0.95;
+      }
+
+      // (4) 천골(Sacrum) 전굴/후굴 동기화
+      if (neuro3D.sacrumGroup) {
+        neuro3D.sacrumGroup.rotation.x = -b * (0.08 + pDepth * 0.22);
+        neuro3D.sacrumGroup.position.y = -3.75 + b * (0.04 + pDepth * 0.09);
+      }
+
+      // (5) 경막관(Dural Tube) 견인 및 CSF 척수액 파동 입자
+      if (neuro3D.duralTubeMesh && neuro3D.duralTubeMat) {
+        neuro3D.duralTubeMesh.scale.set(1 - b * 0.07, 1 + b * 0.025, 1 - b * 0.07);
+        neuro3D.duralTubeMat.emissiveIntensity = 0.3 + csfVel * 0.75;
+      }
+
+      neuro3D.csfSpinalParticles.forEach(cp => {
+        cp.t += (dt / 1000) * cp.speed * (0.35 + csfVel * 1.45) * cp.dir;
+        if (cp.t > 1) cp.t -= 1;
+        if (cp.t < 0) cp.t += 1;
+
+        const pt = cp.curve.getPointAt(cp.t);
+        cp.mesh.position.set(pt.x + cp.radX, pt.y, pt.z + cp.radZ);
+        const s = 0.65 + csfVel * 0.65;
+        cp.mesh.scale.set(s, s, s);
+      });
+
+      // (6) 글림프 시스템(Glymphatic Wash) 뇌 조직 세척 유체 파동
+      neuro3D.glymphWashParticles.forEach(wp => {
+        wp.t += (dt / 1000) * wp.speed * (0.25 + csfVel * 1.35);
+        if (wp.t > 1) wp.t -= 1;
+
+        const dist = 0.28 + wp.t * 1.15;
+        wp.mesh.position.copy(wp.dir).multiplyScalar(dist);
+        const s = (0.3 + csfVel * 0.85) * Math.sin(wp.t * Math.PI);
+        wp.mesh.scale.set(s, s, s);
+      });
+
+      // (7) 뇌 조직 내 대사 노폐물(Toxins) — 정화율(clearRate)이 높아질수록 씻겨 사라짐
+      neuro3D.toxinParticles.forEach(tx => {
+        const isWashedOut = tx.threshold < clearRate * 0.88;
+        const targetScale = isWashedOut ? 0.01 : (0.85 + inflamm * 0.45);
+        const curScale = tx.mesh.scale.x + (targetScale - tx.mesh.scale.x) * 0.08;
+        tx.mesh.scale.set(curScale, curScale, curScale);
+
+        tx.mesh.position.set(
+          tx.basePos.x + Math.sin(now * 0.002 + tx.phase) * 0.05,
+          tx.basePos.y + Math.cos(now * 0.0023 + tx.phase) * 0.05,
+          tx.basePos.z
+        );
+        tx.mesh.rotation.x += dt * 0.002;
+        tx.mesh.rotation.y += dt * 0.002;
+      });
+
+      // (8) 경부 심부 림프절 발광 및 면역 세포 전신 이동
+      neuro3D.lymphNodeMats.forEach(mat => {
+        mat.emissiveIntensity = 0.35 + clearRate * 1.15;
+      });
+
+      neuro3D.immuneParticles.forEach(im => {
+        im.t += (dt / 1000) * im.speed * (0.4 + clearRate * 1.4);
+        if (im.t > 1) im.t -= 1;
+
+        const pt = im.curve.getPointAt(im.t);
+        im.mesh.position.copy(pt);
+        const s = 0.55 + clearRate * 0.75;
+        im.mesh.scale.set(s, s, s);
+      });
+
+      if (neuro3D.ambientStars) {
+        neuro3D.ambientStars.rotation.y += dt * 0.00004;
+      }
+    }
+
+    function syncGlymphHUD() {
+      const csfPct = Math.round(state.glymph.csfVelocity * 100);
+      const clrPct = Math.round(state.glymph.clearanceRate * 100);
+      const infPct = Math.round(state.glymph.neuroInflammation * 100);
+
+      dom.telemetryModeLabel.textContent = clrPct > 60 ? "WASHING" : "ACCUMULATING";
+      dom.telemetryModeLabel.className = clrPct > 60 ? "text-teal-300 font-bold" : "text-rose-400 font-bold";
+
+      dom.hudCsfFlowVal.textContent = csfPct > 60 ? `${csfPct}% (활발)` : `${csfPct}% (정체)`;
+      dom.hudCsfFlowBar.style.width = `${Math.max(12, csfPct)}%`;
+
+      dom.hudClearanceVal.textContent = `${clrPct}%`;
+      dom.hudClearanceBar.style.width = `${Math.max(12, clrPct)}%`;
+
+      dom.hudInflammVal.textContent = infPct < 45 ? `낮음 (${infPct}% · 면역 안정)` : `높음 (${infPct}% · 염증 증가)`;
+      dom.hudInflammVal.className = infPct < 45 ? "font-mono-tech font-bold text-emerald-400" : "font-mono-tech font-bold text-rose-400";
+      dom.hudInflammBar.style.width = `${Math.max(12, infPct)}%`;
+    }
+
+    function mainLoop(now) {
+      const dt = Math.min(50, now - state.lastFrameTime);
+      state.lastFrameTime = now;
+
+      if (state.isPlaying && state.hasStarted && state.currentScene < 4) {
+        const scene = SCENES[state.currentScene];
+        state.sceneElapsedMs += dt;
+        const progress = Math.min(100, (state.sceneElapsedMs / scene.durationMs) * 100);
+        dom.sceneProgressBar.style.width = `${progress}%`;
+
+        if (state.sceneElapsedMs >= scene.durationMs) {
+          goToScene(state.currentScene + 1, true);
+        }
+      }
+
+      updateSimulationAnd3D(dt, now);
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+      }
+      requestAnimationFrame(mainLoop);
+    }
+
+    /**
+     * =========================================================================
+     * 한국어 음성 나레이션 (Web Speech API)
+     * =========================================================================
+     */
+    const ttsManager = {
+      supported: 'speechSynthesis' in window,
+      koVoice: null,
+
+      init() {
+        if (!this.supported) {
+          dom.ttsStatusText.textContent = "음성 미지원 (자막 모드)";
+          return;
+        }
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          this.koVoice = voices.find(v => v.lang.includes('ko') && (v.name.includes('Google') || v.name.includes('Heami') || v.name.includes('Yuna')))
+                      || voices.find(v => v.lang.includes('ko'));
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      },
+
+      speak(text) {
+        if (!this.supported || state.isMuted || !state.hasStarted) return;
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (this.koVoice) utterance.voice = this.koVoice;
+          utterance.lang = 'ko-KR';
+          utterance.rate = 1.02;
+
+          utterance.onstart = () => {
+            dom.ttsStatusText.textContent = "나레이션 재생 중...";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+          };
+          utterance.onend = () => {
+            dom.ttsStatusText.textContent = "나레이션 대기 중";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {}
+      },
+
+      stop() {
+        if (!this.supported) return;
+        try {
+          window.speechSynthesis.cancel();
+          dom.ttsStatusText.textContent = state.isMuted ? "음소거됨" : "일시정지됨";
+          dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-slate-500";
+        } catch (e) {}
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 씬 전환 및 3D 카메라 / 시뮬레이터 제어 바인딩
+     * =========================================================================
+     */
+    function setUserZoom(nextZoom) {
+      state.cam.targetUserZoomMult = Math.max(0.55, Math.min(3.2, nextZoom));
+    }
+
+    function resetUserCameraView() {
+      state.cam.userThetaOffset = 0;
+      state.cam.userPhiOffset = 0;
+      state.cam.targetUserZoomMult = 1.0;
+      state.cam.targetUserPanX = 0;
+      state.cam.targetUserPanY = 0;
+    }
+
+    function goToScene(index, autoSpeak = true) {
+      if (index < 0) index = 0;
+      if (index >= SCENES.length) index = SCENES.length - 1;
+
+      state.currentScene = index;
+      state.sceneElapsedMs = 0;
+      const scene = SCENES[index];
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.className = idx === index
+          ? "scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer"
+          : "scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer";
+      });
+
+      dom.hudSceneNum.textContent = scene.num;
+      dom.hudSceneTitle.textContent = scene.title;
+      dom.hudSubBadge.innerHTML = `<span>${scene.badgeText}</span>`;
+      dom.hudSubBadge.className = `inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] w-fit backdrop-blur-sm ${scene.badgeClass}`;
+      dom.hudCameraInfo.textContent = scene.camInfo;
+
+      dom.floatingCardTitle.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="${scene.cardColor}">${scene.cardTitle}</span>`;
+      dom.floatingCardBody.textContent = scene.cardBody;
+
+      dom.subtitleText.innerHTML = scene.subtitleHtml;
+      dom.currentSceneCounter.textContent = index + 1;
+      dom.sceneProgressBar.style.width = index === 4 ? "100%" : "0%";
+
+      dom.scene4ImmuneSummary.classList.toggle('hidden', index !== 3);
+      dom.simulatorControls.classList.toggle('hidden', index !== 4);
+
+      if (index === 4) {
+        applySimPreset(state.simPreset);
+      }
+
+      dom.prevSceneBtn.disabled = index === 0;
+      dom.nextSceneBtn.disabled = index === SCENES.length - 1;
+
+      if (autoSpeak && state.hasStarted && !state.isMuted) {
+        ttsManager.speak(scene.narrationText);
+      }
+    }
+
+    function applySimPreset(preset) {
+      state.simPreset = preset;
+      const map = {
+        shallow: 0.22,
+        deep:    0.85,
+        surge:   1.0
+      };
+      state.glymph.targetPumpDepth = map[preset] ?? 0.85;
+
+      dom.presetBtns.forEach(b => {
+        const active = b.dataset.preset === preset;
+        b.className = active
+          ? "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-teal-500/25 text-teal-300 border border-teal-400/60 transition cursor-pointer"
+          : "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer";
+      });
+    }
+
+    function setPlayState(playing) {
+      state.isPlaying = playing;
+      dom.iconPlay.classList.toggle('hidden', playing);
+      dom.iconPause.classList.toggle('hidden', !playing);
+      dom.playPauseLabel.textContent = playing ? "일시정지" : "재생";
+
+      if (playing) {
+        if (!state.isMuted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      } else {
+        ttsManager.stop();
+      }
+    }
+
+    function updateMuteUI() {
+      dom.iconSoundOn.classList.toggle('hidden', state.isMuted);
+      dom.iconSoundOff.classList.toggle('hidden', !state.isMuted);
+      dom.muteBtnLabel.textContent = state.isMuted ? "음소거" : "음성 ON";
+    }
+
+    function bindEvents() {
+      dom.startWithVoiceBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = false;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, true);
+        setPlayState(true);
+      });
+
+      dom.startSilentBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = true;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, false);
+        setPlayState(true);
+      });
+
+      // 3D WebGL 궤도 회전 · 패닝 · 줌
+      const targetEl = dom.threeContainer;
+      targetEl.addEventListener('contextmenu', e => e.preventDefault());
+
+      targetEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setUserZoom(state.cam.targetUserZoomMult * factor);
+      }, { passive: false });
+
+      targetEl.addEventListener('dblclick', resetUserCameraView);
+
+      targetEl.addEventListener('mousedown', e => {
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+        state.cam.dragMode = (e.shiftKey || e.button === 1 || e.button === 2) ? 'pan' : 'orbit';
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!state.cam.dragMode) return;
+        const dx = e.clientX - state.cam.dragStartX;
+        const dy = e.clientY - state.cam.dragStartY;
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+
+        if (state.cam.dragMode === 'pan') {
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - dx * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + dy * panSpeed));
+        } else {
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 멀티터치 핀치 줌 & 3D 회전
+      targetEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          state.cam.dragMode = 'orbit';
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          state.cam.dragMode = 'pinch';
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          state.cam.pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          state.cam.pinchStartZoom = state.cam.targetUserZoomMult;
+          state.cam.pinchCenterX = (t0.clientX + t1.clientX) * 0.5;
+          state.cam.pinchCenterY = (t0.clientY + t1.clientY) * 0.5;
+        }
+      }, { passive: false });
+
+      targetEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && state.cam.dragMode === 'orbit') {
+          const dx = e.touches[0].clientX - state.cam.dragStartX;
+          const dy = e.touches[0].clientY - state.cam.dragStartY;
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        } else if (e.touches.length === 2 && state.cam.dragMode === 'pinch') {
+          e.preventDefault();
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          const midX = (t0.clientX + t1.clientX) * 0.5;
+          const midY = (t0.clientY + t1.clientY) * 0.5;
+
+          if (state.cam.pinchStartDist > 0) {
+            setUserZoom(state.cam.pinchStartZoom * (dist / state.cam.pinchStartDist));
+          }
+
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - (midX - state.cam.pinchCenterX) * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + (midY - state.cam.pinchCenterY) * panSpeed));
+          state.cam.pinchCenterX = midX;
+          state.cam.pinchCenterY = midY;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        state.cam.dragMode = null;
+      });
+
+      dom.resetCameraBtn.addEventListener('click', resetUserCameraView);
+      dom.hudResetViewBtn.addEventListener('click', resetUserCameraView);
+      dom.zoomInBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult * 1.25));
+      dom.zoomOutBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult / 1.25));
+
+      dom.muteToggleBtn.addEventListener('click', () => {
+        state.isMuted = !state.isMuted;
+        updateMuteUI();
+        if (state.isMuted) ttsManager.stop();
+        else if (state.isPlaying && state.hasStarted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.addEventListener('click', () => {
+          if (!state.hasStarted) {
+            state.hasStarted = true;
+            dom.startOverlay.classList.add('hidden');
+          }
+          goToScene(idx, true);
+          if (!state.isPlaying) setPlayState(true);
+        });
+      });
+
+      dom.playPauseBtn.addEventListener('click', () => {
+        if (!state.hasStarted) {
+          state.hasStarted = true;
+          dom.startOverlay.classList.add('hidden');
+        }
+        setPlayState(!state.isPlaying);
+      });
+      dom.prevSceneBtn.addEventListener('click', () => goToScene(state.currentScene - 1, true));
+      dom.nextSceneBtn.addEventListener('click', () => goToScene(state.currentScene + 1, true));
+      dom.replayNarrationBtn.addEventListener('click', () => {
+        state.sceneElapsedMs = 0;
+        if (state.isMuted) {
+          state.isMuted = false;
+          updateMuteUI();
+        }
+        ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // Scene 5 정화 모드 프리셋 & 노폐물 주입 테스트 버튼
+      dom.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          applySimPreset(btn.dataset.preset);
+        });
+      });
+
+      dom.injectToxinsBtn.addEventListener('click', () => {
+        // 일시적으로 뇌 조직에 대사 독소와 신경 염증을 축적시킨 후 현재 호흡 모드로 서서히 세척
+        state.glymph.clearanceRate = 0.12;
+        state.glymph.neuroInflammation = 0.88;
+      });
+    }
+
+    window.onload = function () {
+      initThree3D();
+      ttsManager.init();
+      bindEvents();
+      requestAnimationFrame(mainLoop);
+    };
+  </script>
+</body>
+</html>

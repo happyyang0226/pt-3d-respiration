@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>신경계의 스위치: 횡격막과 미주신경의 비밀 (1편 - True 3D)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts: Noto Sans KR & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #040711;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-deep);
+      color: #F8FAFC;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 글래스모피즘 HUD 패널 */
+    .glass-panel {
+      background: rgba(8, 14, 28, 0.74);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* WebGL 캔버스 인터랙션 커서 */
+    #threeContainer canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #threeContainer canvas:active {
+      cursor: grabbing;
+    }
+
+    /* 3D 공간 투영 라벨 태그 */
+    .spatial-tag {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#040711]">
+
+  <!-- 상단 시네마틱 헤더 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 z-30">
+    <div class="flex items-center gap-3">
+      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono-tech font-bold bg-sky-500/15 text-sky-300 border border-sky-400/40 shadow-[0_0_15px_rgba(56,189,248,0.28)]">
+        TRUE 3D WEBGL · EPISODE 01
+      </span>
+      <div>
+        <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-100">
+          신경계의 스위치: <span class="text-rose-400">횡격막</span>과 <span class="text-amber-300">미주신경</span>의 비밀
+        </h1>
+        <p class="text-[11px] text-slate-400 hidden sm:block">좌클릭 드래그: 360° 3D 궤도 회전 · 휠/버튼: 줌 · Shift+드래그: 시점 이동</p>
+      </div>
+    </div>
+
+    <!-- 우측 오디오 및 3D 카메라 리셋 컨트롤 -->
+    <div class="flex items-center gap-2">
+      <button id="resetCameraBtn" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/35 flex items-center gap-1.5 transition cursor-pointer"
+        title="3D 카메라 시점 초기화">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="hidden sm:inline">3D 시점 정렬</span>
+      </button>
+
+      <!-- TTS 상태 표시 -->
+      <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+        <span id="ttsIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="ttsStatusText">한국어 음성 준비됨</span>
+      </div>
+
+      <!-- 음성 켜기/음소거 토글 -->
+      <button id="muteToggleBtn" type="button"
+        class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer">
+        <svg id="iconSoundOn" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        <svg id="iconSoundOff" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+        </svg>
+        <span id="muteBtnLabel">음성 ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 16:9 3D WebGL 애니메이션 무대 -->
+  <main class="flex-1 flex flex-col items-center justify-center p-2.5 sm:p-4 md:p-5">
+    <div class="w-full max-w-6xl bg-[#060A15] border border-slate-800/90 rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col relative">
+      
+      <!-- 챕터 네비게이션 탭 -->
+      <div class="grid grid-cols-5 border-b border-slate-800/90 bg-slate-950/90 text-[11px] sm:text-xs z-20">
+        <button data-scene="0" class="scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer">
+          01. 자율신경 불균형
+        </button>
+        <button data-scene="1" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          02. 횡격막·식도열공 3D
+        </button>
+        <button data-scene="2" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          03. 날숨과 미주신경 파동
+        </button>
+        <button data-scene="3" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          04. 전신 5대 장기 반응
+        </button>
+        <button data-scene="4" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          05. 3D 호흡 시뮬레이터
+        </button>
+      </div>
+
+      <!-- 16:9 Three.js 3D 뷰포트 컨테이너 -->
+      <div id="viewportContainer" class="relative w-full aspect-video min-h-[460px] sm:min-h-[540px] bg-[#040711] overflow-hidden">
+        
+        <!-- Three.js WebGL 렌더링 타겟 -->
+        <div id="threeContainer" class="w-full h-full"></div>
+
+        <!-- 3D 좌표 투영 공간 라벨 레이어 -->
+        <div id="spatialLabelsLayer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+        <!-- 시작 오버레이 -->
+        <div id="startOverlay" class="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-400/20 to-amber-400/15 border border-sky-400/50 flex items-center justify-center mb-4 shadow-[0_0_35px_rgba(56,189,248,0.35)]">
+            <svg class="w-8 h-8 text-sky-300" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <span class="text-xs font-mono-tech tracking-widest text-sky-400 uppercase mb-2">Interactive Real-Time 3D Anatomy Engine</span>
+          <h2 class="text-xl sm:text-3xl font-black text-white mb-3 tracking-tight">
+            신경계의 스위치: 횡격막과 미주신경의 비밀
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 max-w-xl mb-6 leading-relaxed">
+            실시간 3D 입체 모델로 구현된 흉곽·횡격막·장기 내부를 360° 회전하고 확대하며, 
+            <span class="text-sky-400 font-semibold">식도열공 괄약근</span>의 조임과 
+            <span class="text-amber-300 font-semibold">미주신경(부교감신경)</span>의 생체발광 신호 전달을 입체적으로 탐험하세요.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="startWithVoiceBtn" type="button"
+              class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-amber-500/30 flex items-center gap-2 transition transform hover:scale-105 cursor-pointer">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              음성 나레이션과 함께 3D 시작
+            </button>
+            <button id="startSilentBtn" type="button"
+              class="px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition cursor-pointer">
+              자막만으로 보기
+            </button>
+          </div>
+        </div>
+
+        <!-- 좌측 상단: 씬 타이틀 & 3D 카메라 인디케이터 -->
+        <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[60%]">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl glass-panel">
+            <span id="hudSceneNum" class="text-xs font-mono-tech font-bold text-amber-400">SCENE 01</span>
+            <span class="text-slate-600">|</span>
+            <span id="hudSceneTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">만성 스트레스와 자율신경 불균형</span>
+          </div>
+          <div id="hudSubBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-[11px] text-rose-200 w-fit backdrop-blur-sm">
+            <span>교감신경 과항진 상태 (Sympathetic Overdrive)</span>
+          </div>
+          <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-950/70 text-[10px] font-mono-tech text-slate-400 w-fit">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+            <span id="hudCameraInfo">3D CAM: ORBITAL TORSO VIEW</span>
+          </div>
+        </div>
+
+        <!-- 우측 상단: 3D 줌 컨트롤 바 & 생체 텔레메트리 HUD -->
+        <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end gap-2">
+          <!-- 줌 컨트롤 바 -->
+          <div class="glass-panel rounded-xl px-2 py-1.5 flex items-center gap-1 pointer-events-auto shadow-lg">
+            <button id="zoomOutBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 축소 (−)">
+              −
+            </button>
+            <span id="zoomLevelLabel" class="px-2 min-w-[3.2rem] text-center font-mono-tech text-xs font-bold text-sky-300 select-none">
+              100%
+            </span>
+            <button id="zoomInBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 확대 (+)">
+              +
+            </button>
+            <div class="w-px h-4 bg-slate-700/80 mx-0.5"></div>
+            <button id="hudResetViewBtn" type="button"
+              class="px-2 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/30 flex items-center gap-1 text-[11px] font-medium transition active:scale-95 cursor-pointer"
+              title="3D 카메라 각도 및 거리 초기화 (더블클릭)">
+              <span>↺</span>
+              <span class="hidden sm:inline">초기화</span>
+            </button>
+          </div>
+
+          <!-- 생체 텔레메트리 HUD -->
+          <div class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-44 sm:w-60 pointer-events-none">
+            <div class="text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
+              <span>3D BIO-TELEMETRY</span>
+              <span id="telemetryPhaseLabel" class="text-rose-400 font-bold">STRESS</span>
+            </div>
+
+            <!-- 실시간 심박수 -->
+            <div class="flex items-baseline justify-between mb-2">
+              <span class="text-[11px] text-slate-300">심박수 (HR)</span>
+              <div class="font-mono-tech">
+                <span id="hudBpm" class="text-base sm:text-lg font-bold text-rose-400">98</span>
+                <span class="text-[10px] text-slate-400">BPM</span>
+              </div>
+            </div>
+
+            <!-- 미주신경 활성도 게이지 -->
+            <div class="mb-2">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">미주신경 톤</span>
+                <span id="hudVagusPct" class="font-mono-tech font-bold text-amber-300">22%</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudVagusBar" class="h-full bg-gradient-to-r from-amber-500 via-amber-300 to-emerald-400 transition-all duration-150" style="width: 22%;"></div>
+              </div>
+            </div>
+
+            <!-- 식도열공 압력 게이지 -->
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300">식도열공 조임압</span>
+                <span id="hudHiatusState" class="font-mono-tech font-bold text-sky-400">긴장/불규칙</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="hudHiatusBar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-150" style="width: 35%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 좌측 플로팅 해부학 콜아웃 카드 -->
+        <div id="sceneFloatingInfo" class="hidden md:flex flex-col gap-2 absolute left-4 top-28 z-20 w-64 glass-panel rounded-xl p-3.5 pointer-events-none transition-all duration-300">
+          <div id="floatingCardTitle" class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>교감신경 폭주 vs 브레이크 저하</span>
+          </div>
+          <p id="floatingCardBody" class="text-[11px] text-slate-300 leading-relaxed">
+            척추 양옆의 교감신경간(붉은 신경망)이 과열되어 심장을 빠르게 뛰게 하고, 횡격막 움직임이 얕아져 부교감신경(미주신경)의 조절 기능이 저하됩니다.
+          </p>
+        </div>
+
+        <!-- SCENE 4 전용: 5대 장기 연쇄 반응 요약 배지 -->
+        <div id="scene4OrganLegend" class="hidden absolute right-4 bottom-24 sm:bottom-28 z-20 glass-panel rounded-xl p-3 w-64 sm:w-72 pointer-events-none">
+          <div class="text-[11px] font-bold text-emerald-300 mb-1.5 border-b border-slate-800 pb-1">
+            미주신경 활성화 → 전신 5대 장기 조율
+          </div>
+          <ul class="text-[11px] text-slate-200 space-y-1">
+            <li class="flex justify-between"><span class="text-rose-300 font-semibold">● 심장</span><span>동방결절 안정 · 심박수 감소</span></li>
+            <li class="flex justify-between"><span class="text-sky-300 font-semibold">● 폐·기관지</span><span>평활근 이완 · 가스교환 극대화</span></li>
+            <li class="flex justify-between"><span class="text-amber-300 font-semibold">● 위·장관</span><span>연동운동 및 소화액 분비 촉진</span></li>
+            <li class="flex justify-between"><span class="text-emerald-300 font-semibold">● 간</span><span>포도당 방출 조절 · 혈당 안정</span></li>
+            <li class="flex justify-between"><span class="text-purple-300 font-semibold">● 신장</span><span>혈류 여과 최적화 · 염증 억제</span></li>
+          </ul>
+        </div>
+
+        <!-- SCENE 5 전용: 인터랙티브 3D 호흡 시뮬레이터 컨트롤 패널 -->
+        <div id="simulatorControls" class="hidden absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-3xl glass-panel rounded-2xl p-3 sm:p-3.5">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <!-- 호흡 리듬 프리셋 -->
+            <div class="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+              <span class="text-[11px] font-semibold text-slate-400 mr-1">호흡 패턴:</span>
+              <button type="button" data-preset="stress" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                과호흡/스트레스 (2s:2s)
+              </button>
+              <button type="button" data-preset="relax" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/25 text-amber-300 border border-amber-400/60 transition cursor-pointer">
+                미주신경 이완 (4s:8s)
+              </button>
+              <button type="button" data-preset="deep" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">
+                심층 회복 호흡 (5s:10s)
+              </button>
+            </div>
+
+            <!-- 수동 누르고 떼기 버튼 -->
+            <button id="manualHoldBtn" type="button"
+              class="w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 shadow-[0_0_20px_rgba(52,211,153,0.35)] transition active:scale-95 cursor-pointer">
+              누르고 있으면 들숨 / 떼면 긴 날숨
+            </button>
+          </div>
+        </div>
+
+        <!-- 하단 시네마틱 자막 오버레이 -->
+        <div class="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl pointer-events-none">
+          <div class="bg-slate-950/90 border border-slate-800/90 backdrop-blur-md rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-center shadow-2xl">
+            <p id="subtitleText" class="text-xs sm:text-sm md:text-base font-medium text-slate-100 leading-relaxed">
+              시작 버튼을 누르면 실시간 3D 입체 호흡 메커니즘 애니메이션이 재생됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 플레이어 타임라인 및 컨트롤 바 -->
+      <div class="bg-slate-950 border-t border-slate-800/90 px-4 sm:px-6 py-3 flex flex-col gap-2.5 z-20">
+        <!-- 프로그레스 바 -->
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="sceneProgressBar" class="h-full bg-gradient-to-r from-sky-400 via-amber-400 to-emerald-400 transition-all duration-150" style="width: 0%;"></div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <!-- 좌측 재생 컨트롤 -->
+          <div class="flex items-center gap-2">
+            <button id="prevSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="이전 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+
+            <button id="playPauseBtn" type="button"
+              class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer">
+              <svg id="iconPlay" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="iconPause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span id="playPauseLabel">재생</span>
+            </button>
+
+            <button id="nextSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="다음 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            <button id="replayNarrationBtn" type="button"
+              class="ml-1 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="현재 장면 다시 듣기">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <span class="hidden sm:inline">다시 듣기</span>
+            </button>
+          </div>
+
+          <!-- 우측 시리즈 예고 & 카운터 -->
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="hidden md:inline">시리즈 다음 편: <strong class="text-slate-300">2편 혈액 속 화학 공장 (산-염기 균형)</strong></span>
+            <span class="font-mono-tech font-bold text-slate-200 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">
+              <span id="currentSceneCounter">1</span> / 5
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * 1편: 신경계의 스위치 — 횡격막과 미주신경의 비밀 (True 3D Three.js Engine)
+     * - Three.js r128 WebGL 3D 메시 및 실시간 동적 버텍스 변형(횡격막 수축/이완)
+     * - 360도 구면 좌표계 궤도 카메라(Spherical Orbit Camera) + 줌/패닝
+     * - 3D TubeGeometry 미주신경망 및 활동전위 빛 입자(Sphere) 시뮬레이션
+     * - 3D 월드 좌표 → 2D 스크린 좌표 투영 해부학 라벨(Spatial Labels)
+     * =========================================================================
+     */
+
+    const SCENES = [
+      {
+        id: 0,
+        num: "SCENE 01",
+        title: "만성 스트레스와 자율신경 불균형",
+        badgeText: "교감신경 과항진 상태 (Sympathetic Overdrive)",
+        badgeClass: "bg-rose-500/20 border-rose-500/40 text-rose-200",
+        camInfo: "3D CAM: FULL TORSO · SYMPATHETIC OVERDRIVE",
+        // 구면 좌표계 카메라 타겟 (theta: 좌우각, phi: 상하각, radius: 거리, targetY: 초점 높이)
+        cameraTarget: { theta: -0.32, phi: 1.48, radius: 13.5, targetX: 0, targetY: 0.2, targetZ: 0 },
+        cardTitle: "교감신경 폭주 vs 브레이크 저하",
+        cardColor: "text-rose-400",
+        cardBody: "척추 양옆의 교감신경간(붉은 3D 신경줄기)이 과열되어 심장을 빠르게 뛰게 하고, 횡격막 움직임이 얕아져 부교감신경(미주신경)의 조절 기능이 저하됩니다.",
+        durationMs: 14000,
+        subtitleHtml: "몸이 긴장하거나 만성 스트레스 상태에 놓이면 <span class='text-rose-400 font-bold'>교감신경(가속 페달)</span>이 과도하게 활성화되고, 회복을 담당하는 <span class='text-emerald-400 font-bold'>부교감신경</span>의 조절 기능은 급격히 저하됩니다.",
+        narrationText: "몸이 긴장하거나 만성 스트레스 상태에 놓이면, 교감신경이 과도하게 활성화되면서 부교감신경의 조절 기능은 급격히 저하됩니다. 얕고 빠른 호흡이 이어지며 우리 몸은 브레이크가 약해진 상태로 내달리게 됩니다."
+      },
+      {
+        id: 1,
+        num: "SCENE 02",
+        title: "횡격막과 식도열공의 3D 입체 메커니즘",
+        badgeText: "생리학적 괄약근 (Esophageal Hiatus Sphincter)",
+        badgeClass: "bg-sky-500/20 border-sky-400/40 text-sky-200",
+        camInfo: "3D CAM: MACRO ZOOM · DIAPHRAGM HIATUS RING",
+        cameraTarget: { theta: 0.42, phi: 1.18, radius: 7.4, targetX: 0, targetY: -0.65, targetZ: 0.1 },
+        cardTitle: "식도열공의 이중 물리 작용",
+        cardColor: "text-sky-300",
+        cardBody: "횡격막 근육 돔이 식도와 미주신경을 감싸는 '식도열공 링'은 들숨 시 조여져 위산 역류를 막고 미주신경을 견인하며, 날숨 시 이완되어 신경을 놓아줍니다.",
+        durationMs: 16500,
+        subtitleHtml: "들숨 시 횡격막이 수축해 하강하면 <span class='text-sky-400 font-bold'>식도열공</span>이 조여져 위산 역류를 물리적으로 막고, 곁을 지나는 <span class='text-amber-300 font-bold'>미주신경</span>을 부드럽게 당겼다가 날숨 시 놓아줍니다.",
+        narrationText: "횡격막의 식도열공은 단순한 통로가 아니라 생리학적 괄약근 역할을 합니다. 들숨 시 횡격막이 아래로 내려가면 식도열공이 조여져 위산 역류를 물리적으로 막아주고, 함께 통과하는 미주신경을 부드럽게 당겼다가 날숨 시 이완하며 놓아줍니다."
+      },
+      {
+        id: 2,
+        num: "SCENE 03",
+        title: "날숨과 미주신경 활성화 스위치",
+        badgeText: "부교감신경 스위치 ON (Vagal Tone Surge)",
+        badgeClass: "bg-amber-500/20 border-amber-400/45 text-amber-200",
+        camInfo: "3D CAM: VAGUS TRUNK TRACKING · BRAINSTEM TO VISCERA",
+        cameraTarget: { theta: -0.38, phi: 1.42, radius: 10.6, targetX: 0, targetY: 0.65, targetZ: 0 },
+        cardTitle: "긴 날숨이 켜는 부교감 스위치",
+        cardColor: "text-amber-300",
+        cardBody: "숨을 길게 내쉬면 3D 횡격막 돔이 위로 이완되면서 식도열공의 압박이 풀리고, 뇌간에서 복부까지 이어지는 미주신경 튜브에 황금빛 신호가 전파됩니다.",
+        durationMs: 16000,
+        subtitleHtml: "숨을 길게 내쉬는 <span class='text-emerald-400 font-bold'>날숨</span> 동안 횡격막이 이완해 올라가면, 당겨졌던 <span class='text-amber-300 font-bold'>미주신경</span>이 해방되면서 부교감신경의 활성화가 극대화됩니다.",
+        narrationText: "숨을 길게 내쉬는 날숨 동안 횡격막이 부드럽게 이완해 올라가면, 당겨지고 눌렸던 미주신경이 해방되면서 부교감신경의 활성화가 극대화됩니다. 즉, 의식적으로 길게 내쉬는 호흡이 긴장과 스트레스를 끄는 신경계의 스위치입니다."
+      },
+      {
+        id: 3,
+        num: "SCENE 04",
+        title: "전신 5대 장기의 연쇄 반응",
+        badgeText: "미주신경 네트워크 · 전신 항상성 최적화",
+        badgeClass: "bg-emerald-500/20 border-emerald-400/45 text-emerald-200",
+        camInfo: "3D CAM: MULTI-ORGAN NETWORK · 5 VISCERAL TARGETS",
+        cameraTarget: { theta: 0.34, phi: 1.46, radius: 12.2, targetX: -0.35, targetY: -0.1, targetZ: 0 },
+        cardTitle: "5대 장기 연쇄 조율 메커니즘",
+        cardColor: "text-emerald-300",
+        cardBody: "미주신경의 부교감 신호는 심장·폐·위장·간·신장에 동시에 도달해 심박 안정, 기관지 확장, 소화 촉진, 혈당 조절 및 전신 항염 작용을 이끌어냅니다.",
+        durationMs: 18500,
+        subtitleHtml: "활성화된 미주신경은 <span class='text-rose-400 font-bold'>심박수 안정</span>, <span class='text-sky-400 font-bold'>기관지 이완</span>, <span class='text-amber-300 font-bold'>위장 연동운동 촉진</span>은 물론 <span class='text-emerald-400 font-bold'>간의 혈당 조절</span>과 <span class='text-purple-400 font-bold'>신장의 염증 억제</span>까지 조율합니다.",
+        narrationText: "활성화된 미주신경은 심장 박동을 부드럽고 천천히 뛰게 하고, 폐의 기관지를 이완시킵니다. 또한 위와 장의 연동운동과 소화액 분비를 촉진하며, 간에서는 혈당을 안정화하고 신장에서는 혈류 여과와 염증 억제를 도와 전신 건강의 균형을 맞춥니다."
+      },
+      {
+        id: 4,
+        num: "SCENE 05",
+        title: "인터랙티브 3D 호흡 시뮬레이터",
+        badgeText: "실시간 호흡 리듬 조작 & 360° 3D 해부 뷰어",
+        badgeClass: "bg-amber-500/25 border-amber-400/50 text-amber-200",
+        camInfo: "3D CAM: INTERACTIVE 360° · DRAG TO ORBIT",
+        cameraTarget: { theta: 0.18, phi: 1.38, radius: 11.2, targetX: 0, targetY: -0.25, targetZ: 0 },
+        cardTitle: "직접 호흡하며 3D 변화 관찰",
+        cardColor: "text-sky-300",
+        cardBody: "화면을 드래그해 360도 각도로 돌려보고, 하단 호흡 패턴이나 수동 버튼을 눌러 긴 날숨 시 미주신경 발광과 심박수 감소를 직접 확인하세요.",
+        durationMs: 999999,
+        subtitleHtml: "하단에서 <span class='text-amber-300 font-bold'>호흡 리듬</span>을 선택하거나 <span class='text-emerald-400 font-bold'>버튼을 누르고 떼면서</span>, 긴 날숨이 횡격막·식도열공·미주신경을 어떻게 바꾸는지 3D로 체험해 보세요.",
+        narrationText: "이제 직접 호흡을 조절해 볼 차례입니다. 화면을 드래그해 360도 입체 구조를 살펴보고, 하단의 호흡 리듬을 선택하거나 버튼을 직접 누르고 떼면서, 길게 내쉬는 날숨이 미주신경과 전신 장기를 어떻게 변화시키는지 실시간으로 확인해 보세요."
+      }
+    ];
+
+    // 전역 상태 객체
+    const state = {
+      currentScene: 0,
+      isPlaying: false,
+      hasStarted: false,
+      isMuted: false,
+      sceneElapsedMs: 0,
+      lastFrameTime: performance.now(),
+
+      // 3D 구면 궤도 카메라 상태 (현재 보간값 + 사용자 오프셋)
+      cam: {
+        theta: -0.32,
+        phi: 1.48,
+        radius: 13.5,
+        targetX: 0,
+        targetY: 0.2,
+        targetZ: 0,
+
+        userThetaOffset: 0,
+        userPhiOffset: 0,
+        userZoomMult: 1.0,
+        targetUserZoomMult: 1.0,
+        userPanX: 0,
+        userPanY: 0,
+        targetUserPanX: 0,
+        targetUserPanY: 0,
+
+        dragMode: null, // 'orbit' | 'pan' | 'pinch'
+        dragStartX: 0,
+        dragStartY: 0,
+        pinchStartDist: 0,
+        pinchStartZoom: 1.0,
+        pinchCenterX: 0,
+        pinchCenterY: 0
+      },
+
+      // 생리학 물리 상태
+      phys: {
+        breath: 0.2,          // 0 = 완전 날숨(횡격막 이완 상승), 1 = 완전 들숨(횡격막 수축 하강)
+        isInhale: false,
+        vagusGlow: 0.22,
+        sympatheticHeat: 0.9,
+        bpm: 98,
+        hiatusTightness: 0.4,
+        heartPhase: 0
+      },
+
+      simPreset: 'relax',
+      manualModeActive: false,
+      isManualHolding: false,
+      simCycleTime: 0
+    };
+
+    // DOM 참조
+    const dom = {
+      viewport: document.getElementById('viewportContainer'),
+      threeContainer: document.getElementById('threeContainer'),
+      spatialLabelsLayer: document.getElementById('spatialLabelsLayer'),
+      startOverlay: document.getElementById('startOverlay'),
+      startWithVoiceBtn: document.getElementById('startWithVoiceBtn'),
+      startSilentBtn: document.getElementById('startSilentBtn'),
+      resetCameraBtn: document.getElementById('resetCameraBtn'),
+      zoomInBtn: document.getElementById('zoomInBtn'),
+      zoomOutBtn: document.getElementById('zoomOutBtn'),
+      zoomLevelLabel: document.getElementById('zoomLevelLabel'),
+      hudResetViewBtn: document.getElementById('hudResetViewBtn'),
+      muteToggleBtn: document.getElementById('muteToggleBtn'),
+      iconSoundOn: document.getElementById('iconSoundOn'),
+      iconSoundOff: document.getElementById('iconSoundOff'),
+      muteBtnLabel: document.getElementById('muteBtnLabel'),
+      ttsStatusText: document.getElementById('ttsStatusText'),
+      ttsIndicatorDot: document.getElementById('ttsIndicatorDot'),
+
+      sceneTabs: document.querySelectorAll('.scene-tab'),
+      hudSceneNum: document.getElementById('hudSceneNum'),
+      hudSceneTitle: document.getElementById('hudSceneTitle'),
+      hudSubBadge: document.getElementById('hudSubBadge'),
+      hudCameraInfo: document.getElementById('hudCameraInfo'),
+
+      telemetryPhaseLabel: document.getElementById('telemetryPhaseLabel'),
+      hudBpm: document.getElementById('hudBpm'),
+      hudVagusPct: document.getElementById('hudVagusPct'),
+      hudVagusBar: document.getElementById('hudVagusBar'),
+      hudHiatusState: document.getElementById('hudHiatusState'),
+      hudHiatusBar: document.getElementById('hudHiatusBar'),
+
+      floatingCardTitle: document.getElementById('floatingCardTitle'),
+      floatingCardBody: document.getElementById('floatingCardBody'),
+      scene4OrganLegend: document.getElementById('scene4OrganLegend'),
+      simulatorControls: document.getElementById('simulatorControls'),
+
+      subtitleText: document.getElementById('subtitleText'),
+      sceneProgressBar: document.getElementById('sceneProgressBar'),
+      prevSceneBtn: document.getElementById('prevSceneBtn'),
+      playPauseBtn: document.getElementById('playPauseBtn'),
+      iconPlay: document.getElementById('iconPlay'),
+      iconPause: document.getElementById('iconPause'),
+      playPauseLabel: document.getElementById('playPauseLabel'),
+      nextSceneBtn: document.getElementById('nextSceneBtn'),
+      replayNarrationBtn: document.getElementById('replayNarrationBtn'),
+      currentSceneCounter: document.getElementById('currentSceneCounter'),
+
+      manualHoldBtn: document.getElementById('manualHoldBtn'),
+      presetBtns: document.querySelectorAll('.sim-preset-btn')
+    };
+
+    /**
+     * =========================================================================
+     * Three.js 3D 씬, 조명, 해부학 메시 및 파티클 구축
+     * =========================================================================
+     */
+    let scene3D, camera3D, renderer3D;
+    const anatomy = {
+      rootGroup: null,
+      ribcageGroup: null,
+      ribMaterials: [],
+      leftLung: null,
+      rightLung: null,
+      lungMat: null,
+      heartGroup: null,
+      heartMat: null,
+      diaphragmMesh: null,
+      diaphragmBasePositions: null,
+      diaphragmMat: null,
+      hiatusRing: null,
+      hiatusMat: null,
+      esophagusMesh: null,
+      stomachGroup: null,
+      liverGroup: null,
+      kidneyLeft: null,
+      kidneyRight: null,
+      brainGroup: null,
+      craniumShell: null,
+      occiputMesh: null,
+      sacrumGroup: null,
+      duralTubeMesh: null,
+      duralTubeMat: null,
+      csfPulses: [],
+      medullaHub: null,
+      medullaMat: null,
+      sympatheticGroup: null,
+      sympatheticMats: [],
+      vagusMeshes: [],
+      vagusMats: [],
+      vagusCurves: [],
+      vagusPulses: [],
+      sympPulses: [],
+      ambientStars: null
+    };
+
+    // 3D 공간 투영 라벨 DOM 관리
+    const spatialLabelNodes = {};
+    const SPATIAL_LABEL_DEFS = [
+      { id: 'symp',      scenes: [0],       text: '교감신경간 (과열)',              color: '#FCA5A5', pos: new THREE.Vector3(-0.95, 1.3, -0.75) },
+      { id: 'heartFast', scenes: [0],       text: '심박수 상승 ↑',                 color: '#FDA4AF', pos: new THREE.Vector3(0.85, 1.15, 0.55) },
+      { id: 'hiatus',    scenes: [1, 4],    text: '식도열공 괄약근',               color: '#38BDF8', pos: new THREE.Vector3(0.0, -0.45, 0.25) },
+      { id: 'diaphragm', scenes: [1],       text: '횡격막 근육 돔',               color: '#FDA4AF', pos: new THREE.Vector3(-1.65, -0.55, 0.4) },
+      { id: 'brainstem', scenes: [2],       text: '뇌간 (미주신경 핵)',            color: '#FEF08A', pos: new THREE.Vector3(0.0, 3.65, -0.35) },
+      { id: 'vagusFlow', scenes: [2],       text: '부교감신경 파동 전파',          color: '#34D399', pos: new THREE.Vector3(0.55, 0.4, 0.2) },
+      { id: 'cranium',   scenes: [2, 3, 4], text: '두개골 리듬 (굴곡/신전)',       color: '#7DD3FC', pos: new THREE.Vector3(0.0, 5.25, -0.35) },
+      { id: 'sacrum',    scenes: [2, 3, 4], text: '천골 리듬 (전굴/후굴)',         color: '#7DD3FC', pos: new THREE.Vector3(0.0, -4.15, -1.05) },
+      { id: 'oHeart',    scenes: [3],       text: '심장 안정 (HR ↓)',              color: '#FDA4AF', pos: new THREE.Vector3(0.85, 1.15, 0.55) },
+      { id: 'oLung',     scenes: [3],       text: '기관지 이완',                   color: '#7DD3FC', pos: new THREE.Vector3(-1.75, 1.45, 0.2) },
+      { id: 'oStomach',  scenes: [3],       text: '위장 연동 촉진',                color: '#FCD34D', pos: new THREE.Vector3(1.25, -1.75, 0.3) },
+      { id: 'oLiver',    scenes: [3],       text: '간 혈당 안정화',                color: '#6EE7B7', pos: new THREE.Vector3(-1.45, -1.55, 0.35) },
+      { id: 'oKidney',   scenes: [3],       text: '신장 여과·항염',                color: '#D8B4FE', pos: new THREE.Vector3(1.25, -2.75, -0.45) }
+    ];
+
+    function initThree3D() {
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+
+      // 1. 씬 & 깊이감 안개(FogExp2)
+      scene3D = new THREE.Scene();
+      scene3D.fog = new THREE.FogExp2(0x040711, 0.032);
+
+      // 2. 원근 카메라
+      camera3D = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+
+      // 3. WebGL 렌더러 (고화질 안티앨리어싱 + 톤매핑)
+      renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer3D.setSize(width, height);
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer3D.toneMappingExposure = 1.18;
+      dom.threeContainer.appendChild(renderer3D.domElement);
+
+      // 4. 시네마틱 3점 조명 + 생체 포인트 라이트
+      const ambientLight = new THREE.AmbientLight(0x1e293b, 1.4);
+      scene3D.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xe0f2fe, 1.65);
+      keyLight.position.set(6, 9, 8);
+      scene3D.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+      rimLight.position.set(-7, 4, -8);
+      scene3D.add(rimLight);
+
+      const bottomFillLight = new THREE.DirectionalLight(0xfb7185, 0.55);
+      bottomFillLight.position.set(0, -8, 4);
+      scene3D.add(bottomFillLight);
+
+      // 5. 홀로그램 바닥 링 그리드 (3D 공간 기준점)
+      const gridGroup = new THREE.Group();
+      gridGroup.position.y = -4.2;
+      [2.4, 3.8, 5.2].forEach((r, idx) => {
+        const ringGeo = new THREE.RingGeometry(r - 0.02, r + 0.02, 64);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.22 - idx * 0.05,
+          side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        gridGroup.add(ring);
+      });
+      scene3D.add(gridGroup);
+
+      // 6. 공간 부유 입자 (3D Starfield / Bio-Particles)
+      const starCount = 260;
+      const starGeo = new THREE.BufferGeometry();
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 22;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 18;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 22;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      const starMat = new THREE.PointsMaterial({
+        color: 0x7dd3fc,
+        size: 0.08,
+        transparent: true,
+        opacity: 0.45
+      });
+      anatomy.ambientStars = new THREE.Points(starGeo, starMat);
+      scene3D.add(anatomy.ambientStars);
+
+      // 7. 인체 3D 해부학 모델 조립
+      anatomy.rootGroup = new THREE.Group();
+      scene3D.add(anatomy.rootGroup);
+
+      buildTorsoAndSpine3D();
+      buildBrainstemAndViscera3D();
+      buildLungsAndHeart3D();
+      buildDiaphragmAndHiatus3D();
+      buildVagusAndSympatheticNerves3D();
+      buildRibcage3D();
+      initSpatialLabels();
+
+      // 창 크기 변경 대응
+      window.addEventListener('resize', onViewportResize);
+    }
+
+    function onViewportResize() {
+      if (!renderer3D || !camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960;
+      const height = rect.height || 540;
+      camera3D.aspect = width / height;
+      camera3D.updateProjectionMatrix();
+      renderer3D.setSize(width, height);
+    }
+
+    /**
+     * (A) 반투명 3D 토르소 외곽 & 흉추 척추 기둥
+     */
+    function buildTorsoAndSpine3D() {
+      // 반투명 홀로그램 토르소 실린더
+      const torsoGeo = new THREE.CylinderGeometry(2.55, 2.25, 7.6, 36, 1, true);
+      torsoGeo.scale(1.15, 1, 0.72);
+      const torsoMat = new THREE.MeshPhysicalMaterial({
+        color: 0x0f172a,
+        emissive: 0x0c4a6e,
+        emissiveIntensity: 0.18,
+        transparent: true,
+        opacity: 0.14,
+        roughness: 0.25,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const torsoMesh = new THREE.Mesh(torsoGeo, torsoMat);
+      torsoMesh.position.y = -0.1;
+      anatomy.rootGroup.add(torsoMesh);
+
+      // 척추 마디 (Vertebrae 15분절, Z = -1.15)
+      const spineGroup = new THREE.Group();
+      const vertGeo = new THREE.CylinderGeometry(0.32, 0.35, 0.34, 16);
+      const vertMat = new THREE.MeshStandardMaterial({
+        color: 0x64748b,
+        roughness: 0.45,
+        metalness: 0.25,
+        transparent: true,
+        opacity: 0.65
+      });
+
+      for (let i = 0; i < 15; i++) {
+        const v = new THREE.Mesh(vertGeo, vertMat);
+        v.position.set(0, 3.1 - i * 0.46, -1.15 + Math.sin(i * 0.35) * 0.12);
+        v.rotation.x = Math.sin(i * 0.35) * 0.12;
+        spineGroup.add(v);
+      }
+      anatomy.rootGroup.add(spineGroup);
+
+      // 천골 (Sacrum - 요추 하단 Y = -3.95, Z = -1.12, 역삼각형 쐐기 구조)
+      anatomy.sacrumGroup = new THREE.Group();
+      anatomy.sacrumGroup.position.set(0, -3.95, -1.12);
+
+      const sacrumGeo = new THREE.ConeGeometry(0.68, 1.25, 6);
+      sacrumGeo.rotateX(Math.PI); // 뾰족한 미골 방향을 아래로 향하게 회전
+      sacrumGeo.scale(1.15, 1.0, 0.42);
+      const sacrumMat = new THREE.MeshPhysicalMaterial({
+        color: 0x7dd3fc,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.35,
+        roughness: 0.32,
+        clearcoat: 0.65,
+        transparent: true,
+        opacity: 0.85
+      });
+      const sacrumMesh = new THREE.Mesh(sacrumGeo, sacrumMat);
+      anatomy.sacrumGroup.add(sacrumMesh);
+
+      // 천골 기저부 관절 링 (천장관절 피벗 기준점)
+      const sacrumBaseRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.46, 0.045, 10, 24),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 })
+      );
+      sacrumBaseRing.rotation.x = Math.PI / 2;
+      sacrumBaseRing.position.y = 0.42;
+      anatomy.sacrumGroup.add(sacrumBaseRing);
+      anatomy.rootGroup.add(anatomy.sacrumGroup);
+
+      // 경막관 (Dural Tube - 후두골 대후두공에서 천골 S2까지 연결되는 핵심 코어 링크)
+      const duralCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 3.75, -0.58),
+        new THREE.Vector3(0, 1.8, -1.05),
+        new THREE.Vector3(0, -0.5, -1.15),
+        new THREE.Vector3(0, -2.5, -1.08),
+        new THREE.Vector3(0, -3.75, -1.12)
+      ]);
+      const duralGeo = new THREE.TubeGeometry(duralCurve, 44, 0.085, 12, false);
+      anatomy.duralTubeMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0ea5e9,
+        emissiveIntensity: 0.55,
+        roughness: 0.25,
+        transparent: true,
+        opacity: 0.72
+      });
+      anatomy.duralTubeMesh = new THREE.Mesh(duralGeo, anatomy.duralTubeMat);
+      anatomy.rootGroup.add(anatomy.duralTubeMesh);
+
+      // 뇌척수액(CSF) 양방향 순환 입자 24개
+      const csfGeo = new THREE.SphereGeometry(0.068, 10, 10);
+      const csfMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+      for (let i = 0; i < 24; i++) {
+        const cMesh = new THREE.Mesh(csfGeo, csfMat);
+        anatomy.rootGroup.add(cMesh);
+        anatomy.csfPulses.push({
+          mesh: cMesh,
+          curve: duralCurve,
+          t: i / 24,
+          dir: i % 2 === 0 ? 1 : -1
+        });
+      }
+    }
+
+    /**
+     * (B) 뇌간(연수) · 두개골(접형골/후두골) · 식도 · 위장 · 간 · 양측 신장 3D 메시
+     */
+    function buildBrainstemAndViscera3D() {
+      // 1. 뇌간(Brainstem) 및 두개골(Cranium - 굴곡/신전 연동)
+      anatomy.brainGroup = new THREE.Group();
+      anatomy.brainGroup.position.set(0, 4.15, -0.45);
+
+      const cerebrumGeo = new THREE.SphereGeometry(0.95, 28, 20);
+      cerebrumGeo.scale(1.15, 0.85, 1.25);
+      const cerebrumMat = new THREE.MeshPhysicalMaterial({
+        color: 0x94a3b8,
+        emissive: 0x1e293b,
+        roughness: 0.4,
+        transparent: true,
+        opacity: 0.35
+      });
+      const cerebrum = new THREE.Mesh(cerebrumGeo, cerebrumMat);
+      cerebrum.position.y = 0.45;
+      anatomy.brainGroup.add(cerebrum);
+
+      // 반투명 두개골 외곽 돔 (Cranium Shell - 호흡에 따라 좌우 확장·전후 굴곡)
+      const craniumGeo = new THREE.SphereGeometry(1.16, 32, 24);
+      craniumGeo.scale(1.12, 0.92, 1.32);
+      const craniumMat = new THREE.MeshPhysicalMaterial({
+        color: 0xbae6fd,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.24,
+        roughness: 0.25,
+        clearcoat: 0.8,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false
+      });
+      anatomy.craniumShell = new THREE.Mesh(craniumGeo, craniumMat);
+      anatomy.craniumShell.position.set(0, 0.48, 0.04);
+      anatomy.brainGroup.add(anatomy.craniumShell);
+
+      // 후두골 하단 아치 (Occiput - 경막관을 상방으로 견인하는 기준점)
+      const occiputGeo = new THREE.TorusGeometry(0.68, 0.065, 12, 28, Math.PI * 1.15);
+      const occiputMat = new THREE.MeshStandardMaterial({
+        color: 0x7dd3fc,
+        emissive: 0x0ea5e9,
+        emissiveIntensity: 0.65
+      });
+      anatomy.occiputMesh = new THREE.Mesh(occiputGeo, occiputMat);
+      anatomy.occiputMesh.rotation.set(Math.PI * 0.65, 0, Math.PI * 0.92);
+      anatomy.occiputMesh.position.set(0, -0.05, -0.35);
+      anatomy.brainGroup.add(anatomy.occiputMesh);
+
+      // 연수(Vagal Nucleus Hub)
+      const medGeo = new THREE.CylinderGeometry(0.24, 0.18, 0.95, 18);
+      anatomy.medullaMat = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.6,
+        roughness: 0.25
+      });
+      anatomy.medullaHub = new THREE.Mesh(medGeo, anatomy.medullaMat);
+      anatomy.medullaHub.position.set(0, -0.35, 0.05);
+      anatomy.brainGroup.add(anatomy.medullaHub);
+      anatomy.rootGroup.add(anatomy.brainGroup);
+
+      // 2. 식도 (Esophagus - 뇌간 하부에서 식도열공을 관통해 위로 연결)
+      const esoGeo = new THREE.CylinderGeometry(0.16, 0.18, 4.4, 20);
+      const esoMat = new THREE.MeshPhysicalMaterial({
+        color: 0xfda4af,
+        emissive: 0x881337,
+        emissiveIntensity: 0.25,
+        roughness: 0.35,
+        transparent: true,
+        opacity: 0.78
+      });
+      anatomy.esophagusMesh = new THREE.Mesh(esoGeo, esoMat);
+      anatomy.esophagusMesh.position.set(0, 1.15, -0.15);
+      anatomy.rootGroup.add(anatomy.esophagusMesh);
+
+      // 3. 위장 (Stomach - 해부학적 좌측 = 화면 우측 X = +0.95, Y = -1.75)
+      anatomy.stomachGroup = new THREE.Group();
+      anatomy.stomachGroup.position.set(0.88, -1.72, 0.12);
+      const stomGeo = new THREE.SphereGeometry(0.82, 24, 20);
+      stomGeo.scale(1.18, 0.85, 0.75);
+      const stomMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf59e0b,
+        emissive: 0xb45309,
+        emissiveIntensity: 0.35,
+        roughness: 0.3,
+        clearcoat: 0.6,
+        transparent: true,
+        opacity: 0.85
+      });
+      const stomMesh = new THREE.Mesh(stomGeo, stomMat);
+      stomMesh.rotation.z = -0.38;
+      anatomy.stomachGroup.add(stomMesh);
+      anatomy.rootGroup.add(anatomy.stomachGroup);
+
+      // 4. 간 (Liver - 해부학적 우측 = 화면 좌측 X = -1.1, Y = -1.45)
+      anatomy.liverGroup = new THREE.Group();
+      anatomy.liverGroup.position.set(-1.05, -1.42, 0.22);
+      const liverGeo = new THREE.SphereGeometry(0.95, 24, 18);
+      liverGeo.scale(1.32, 0.62, 0.78);
+      const liverMat = new THREE.MeshPhysicalMaterial({
+        color: 0x10b981,
+        emissive: 0x047857,
+        emissiveIntensity: 0.35,
+        roughness: 0.32,
+        clearcoat: 0.5,
+        transparent: true,
+        opacity: 0.86
+      });
+      const liverMesh = new THREE.Mesh(liverGeo, liverMat);
+      liverMesh.rotation.z = 0.24;
+      anatomy.liverGroup.add(liverMesh);
+      anatomy.rootGroup.add(anatomy.liverGroup);
+
+      // 5. 좌우 신장 (Kidneys - 후복막 Z = -0.68, Y = -2.65)
+      const kGeo = new THREE.SphereGeometry(0.42, 20, 16);
+      kGeo.scale(0.75, 1.35, 0.65);
+      const kMat = new THREE.MeshPhysicalMaterial({
+        color: 0xc084fc,
+        emissive: 0x7e22ce,
+        emissiveIntensity: 0.4,
+        roughness: 0.3,
+        clearcoat: 0.6,
+        transparent: true,
+        opacity: 0.88
+      });
+
+      anatomy.kidneyLeft = new THREE.Mesh(kGeo, kMat);
+      anatomy.kidneyLeft.position.set(-0.98, -2.62, -0.65);
+      anatomy.kidneyLeft.rotation.z = -0.15;
+      anatomy.rootGroup.add(anatomy.kidneyLeft);
+
+      anatomy.kidneyRight = new THREE.Mesh(kGeo, kMat);
+      anatomy.kidneyRight.position.set(0.98, -2.68, -0.65);
+      anatomy.kidneyRight.rotation.z = 0.15;
+      anatomy.rootGroup.add(anatomy.kidneyRight);
+    }
+
+    /**
+     * (C) 입체 폐(Lungs) & 박동하는 3D 심장(Heart)
+     */
+    function buildLungsAndHeart3D() {
+      // 반투명 발광 폐 재질 (내부 기관지와 미주신경이 투과되어 보이도록 설정)
+      anatomy.lungMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.35,
+        roughness: 0.25,
+        metalness: 0.05,
+        clearcoat: 0.8,
+        transparent: true,
+        opacity: 0.34,
+        depthWrite: false
+      });
+
+      const lungGeo = new THREE.SphereGeometry(1.18, 28, 24);
+      lungGeo.scale(0.88, 1.65, 0.82);
+
+      anatomy.leftLung = new THREE.Mesh(lungGeo, anatomy.lungMat);
+      anatomy.leftLung.position.set(-1.32, 1.15, 0.05);
+      anatomy.leftLung.rotation.z = -0.08;
+      anatomy.rootGroup.add(anatomy.leftLung);
+
+      anatomy.rightLung = new THREE.Mesh(lungGeo, anatomy.lungMat);
+      anatomy.rightLung.position.set(1.32, 1.15, 0.05);
+      anatomy.rightLung.rotation.z = 0.08;
+      anatomy.rootGroup.add(anatomy.rightLung);
+
+      // 3D 심장 (Heart - 흉강 중앙 좌측 편향 X = +0.35, Y = 1.05, Z = 0.35)
+      anatomy.heartGroup = new THREE.Group();
+      anatomy.heartGroup.position.set(0.35, 1.02, 0.38);
+
+      const heartGeo = new THREE.SphereGeometry(0.66, 26, 22);
+      heartGeo.scale(0.92, 1.22, 0.88);
+      anatomy.heartMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf43f5e,
+        emissive: 0xe11d48,
+        emissiveIntensity: 0.55,
+        roughness: 0.25,
+        clearcoat: 0.85
+      });
+      const heartMesh = new THREE.Mesh(heartGeo, anatomy.heartMat);
+      heartMesh.rotation.z = -0.26;
+      anatomy.heartGroup.add(heartMesh);
+
+      // 대동맥궁(Aortic Arch) 디테일
+      const archGeo = new THREE.TorusGeometry(0.36, 0.11, 12, 24, Math.PI * 1.1);
+      const archMesh = new THREE.Mesh(archGeo, anatomy.heartMat);
+      archMesh.position.set(-0.08, 0.65, -0.05);
+      anatomy.heartGroup.add(archMesh);
+
+      anatomy.rootGroup.add(anatomy.heartGroup);
+    }
+
+    /**
+     * (D) 실시간 버텍스 변형 3D 횡격막 돔(Diaphragm) & 식도열공 괄약근 링
+     */
+    function buildDiaphragmAndHiatus3D() {
+      // 원형 평면 메시의 버텍스를 돔 형태로 성형하고, 매 프레임 들숨/날숨에 따라 실시간 변형
+      const diaGeo = new THREE.CylinderGeometry(2.38, 2.52, 0.22, 48, 8, false);
+      diaGeo.scale(1.12, 1, 0.72);
+
+      // 초기 버텍스 위치 저장
+      const posAttr = diaGeo.attributes.position;
+      anatomy.diaphragmBasePositions = new Float32Array(posAttr.array.length);
+      anatomy.diaphragmBasePositions.set(posAttr.array);
+
+      anatomy.diaphragmMat = new THREE.MeshPhysicalMaterial({
+        color: 0xfb7185,
+        emissive: 0xbe123c,
+        emissiveIntensity: 0.42,
+        roughness: 0.38,
+        clearcoat: 0.45,
+        transparent: true,
+        opacity: 0.88
+      });
+
+      anatomy.diaphragmMesh = new THREE.Mesh(diaGeo, anatomy.diaphragmMat);
+      anatomy.diaphragmMesh.position.set(0, -0.45, 0);
+      anatomy.rootGroup.add(anatomy.diaphragmMesh);
+
+      // 식도열공 생리학적 괄약근 토러스 링 (Esophageal Hiatus Ring)
+      const ringGeo = new THREE.TorusGeometry(0.32, 0.085, 18, 36);
+      anatomy.hiatusMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.85,
+        roughness: 0.2
+      });
+      anatomy.hiatusRing = new THREE.Mesh(ringGeo, anatomy.hiatusMat);
+      anatomy.hiatusRing.rotation.x = Math.PI / 2;
+      anatomy.hiatusRing.position.set(0, -0.15, -0.15);
+      anatomy.rootGroup.add(anatomy.hiatusRing);
+    }
+
+    /**
+     * (E) 3D 튜브 미주신경망(Vagus Nerve) & 교감신경간(Sympathetic Chain) + 활동전위 입자
+     */
+    function buildVagusAndSympatheticNerves3D() {
+      // 1. 교감신경간 (척추 양옆 붉은 3D 신경 기둥 + 신경절 구체)
+      anatomy.sympatheticGroup = new THREE.Group();
+      [-0.65, 0.65].forEach(sx => {
+        const sympCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(sx, 3.1, -0.85),
+          new THREE.Vector3(sx * 1.08, 1.2, -0.78),
+          new THREE.Vector3(sx * 1.05, -0.8, -0.82),
+          new THREE.Vector3(sx * 0.95, -2.8, -0.88)
+        ]);
+        const sympGeo = new THREE.TubeGeometry(sympCurve, 32, 0.045, 10, false);
+        const sympMat = new THREE.MeshStandardMaterial({
+          color: 0xef4444,
+          emissive: 0xdc2626,
+          emissiveIntensity: 0.9
+        });
+        anatomy.sympatheticMats.push(sympMat);
+        anatomy.sympatheticGroup.add(new THREE.Mesh(sympGeo, sympMat));
+
+        // 교감신경절 노드
+        for (let g = 0; g < 6; g++) {
+          const pt = sympCurve.getPoint(g / 5);
+          const node = new THREE.Mesh(new THREE.SphereGeometry(0.095, 12, 12), sympMat);
+          node.position.copy(pt);
+          anatomy.sympatheticGroup.add(node);
+        }
+      });
+      anatomy.rootGroup.add(anatomy.sympatheticGroup);
+
+      // 2. 미주신경 5대 3D 경로 (뇌간 → 식도열공 → 심장·폐·위장·간·신장)
+      const curveDefs = [
+        // 메인 줄기 → 위장
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.08, 3.65, -0.35),
+          new THREE.Vector3(0.22, 1.8, -0.12),
+          new THREE.Vector3(0.18, -0.15, -0.05),
+          new THREE.Vector3(0.55, -1.1, 0.08),
+          new THREE.Vector3(0.88, -1.72, 0.15)
+        ]),
+        // 심장 분지
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.08, 3.65, -0.35),
+          new THREE.Vector3(0.22, 2.1, -0.05),
+          new THREE.Vector3(0.32, 1.45, 0.22),
+          new THREE.Vector3(0.35, 1.02, 0.38)
+        ]),
+        // 폐·기관지 분지
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-0.08, 3.65, -0.35),
+          new THREE.Vector3(-0.28, 2.2, -0.1),
+          new THREE.Vector3(-0.75, 1.65, 0.02),
+          new THREE.Vector3(-1.32, 1.25, 0.05)
+        ]),
+        // 간 분지
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-0.08, 3.65, -0.35),
+          new THREE.Vector3(-0.18, 1.5, -0.15),
+          new THREE.Vector3(-0.18, -0.15, -0.05),
+          new THREE.Vector3(-0.68, -0.95, 0.12),
+          new THREE.Vector3(-1.05, -1.42, 0.22)
+        ]),
+        // 신장 분지
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.04, 3.65, -0.35),
+          new THREE.Vector3(0.14, 1.4, -0.22),
+          new THREE.Vector3(0.14, -0.15, -0.25),
+          new THREE.Vector3(0.62, -1.8, -0.52),
+          new THREE.Vector3(0.98, -2.68, -0.65)
+        ])
+      ];
+
+      anatomy.vagusCurves = curveDefs;
+
+      curveDefs.forEach((curve, idx) => {
+        const radius = idx === 0 ? 0.058 : 0.042;
+        const tubeGeo = new THREE.TubeGeometry(curve, 48, radius, 12, false);
+        const tubeMat = new THREE.MeshStandardMaterial({
+          color: idx === 0 ? 0xfbbf24 : 0x34d399,
+          emissive: idx === 0 ? 0xf59e0b : 0x10b981,
+          emissiveIntensity: 0.45,
+          roughness: 0.2
+        });
+        const mesh = new THREE.Mesh(tubeGeo, tubeMat);
+        anatomy.vagusMeshes.push(mesh);
+        anatomy.vagusMats.push(tubeMat);
+        anatomy.rootGroup.add(mesh);
+      });
+
+      // 3. 미주신경 활동전위(Action Potential) 발광 구체 입자 45개
+      const pulseGeo = new THREE.SphereGeometry(0.085, 12, 12);
+      const pulseMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+      for (let i = 0; i < 45; i++) {
+        const pMesh = new THREE.Mesh(pulseGeo, pulseMat);
+        anatomy.rootGroup.add(pMesh);
+        anatomy.vagusPulses.push({
+          mesh: pMesh,
+          curveIdx: i % curveDefs.length,
+          t: Math.random(),
+          speed: 0.26 + Math.random() * 0.22
+        });
+      }
+
+      // 4. 교감신경 스파크 입자 18개
+      const sympPulseGeo = new THREE.SphereGeometry(0.075, 10, 10);
+      const sympPulseMat = new THREE.MeshBasicMaterial({ color: 0xfca5a5 });
+      for (let i = 0; i < 18; i++) {
+        const sMesh = new THREE.Mesh(sympPulseGeo, sympPulseMat);
+        anatomy.rootGroup.add(sMesh);
+        anatomy.sympPulses.push({
+          mesh: sMesh,
+          side: i % 2 === 0 ? -0.65 : 0.65,
+          t: Math.random(),
+          speed: 0.55 + Math.random() * 0.4
+        });
+      }
+    }
+
+    /**
+     * (F) 반투명 3D 흉곽 (흉골 + 좌우 7쌍 갈비뼈 아치)
+     */
+    function buildRibcage3D() {
+      anatomy.ribcageGroup = new THREE.Group();
+
+      const ribMat = new THREE.MeshPhysicalMaterial({
+        color: 0xbae6fd,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.15,
+        roughness: 0.3,
+        transparent: true,
+        opacity: 0.24,
+        depthWrite: false
+      });
+      anatomy.ribMaterials.push(ribMat);
+
+      // 중앙 흉골 (Sternum)
+      const sternumGeo = new THREE.BoxGeometry(0.32, 2.35, 0.14);
+      const sternum = new THREE.Mesh(sternumGeo, ribMat);
+      sternum.position.set(0, 1.25, 1.52);
+      sternum.rotation.x = -0.06;
+      anatomy.ribcageGroup.add(sternum);
+
+      // 좌우 7쌍 3D 늑골 곡선
+      for (let r = 0; r < 7; r++) {
+        const yFront = 2.2 - r * 0.34;
+        const yBack = 2.45 - r * 0.34;
+        const widthFactor = 1.55 + r * 0.16;
+
+        [-1, 1].forEach(dir => {
+          const ribCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(dir * 0.16, yFront, 1.48),
+            new THREE.Vector3(dir * widthFactor, yFront - 0.15, 0.72),
+            new THREE.Vector3(dir * (widthFactor * 1.05), yBack - 0.1, -0.45),
+            new THREE.Vector3(dir * 0.32, yBack, -1.12)
+          ]);
+          const ribGeo = new THREE.TubeGeometry(ribCurve, 24, 0.055, 8, false);
+          const ribMesh = new THREE.Mesh(ribGeo, ribMat);
+          anatomy.ribcageGroup.add(ribMesh);
+        });
+      }
+
+      anatomy.rootGroup.add(anatomy.ribcageGroup);
+    }
+
+    /**
+     * 3D 월드 좌표에 연동되는 공간 라벨 DOM 초기화
+     */
+    function initSpatialLabels() {
+      dom.spatialLabelsLayer.innerHTML = '';
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'spatial-tag px-2.5 py-1 rounded-lg bg-slate-950/85 border text-[11px] font-bold shadow-lg backdrop-blur-sm flex items-center gap-1.5';
+        el.style.borderColor = def.color;
+        el.style.color = def.color;
+        el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full" style="background:${def.color}"></span><span>${def.text}</span>`;
+        dom.spatialLabelsLayer.appendChild(el);
+        spatialLabelNodes[def.id] = el;
+      });
+    }
+
+    function updateSpatialLabelsProjection() {
+      if (!camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+
+      const breath = state.phys.breath;
+      const hiatusY = -0.15 - breath * 0.62;
+
+      SPATIAL_LABEL_DEFS.forEach(def => {
+        const el = spatialLabelNodes[def.id];
+        if (!el) return;
+
+        const isVisibleScene = def.scenes.includes(state.currentScene);
+        if (!isVisibleScene) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        // 동적 위치 반영 (횡격막/식도열공은 호흡에 따라 위아래 이동)
+        const worldPos = def.pos.clone();
+        if (def.id === 'hiatus' || def.id === 'diaphragm') {
+          worldPos.y = hiatusY;
+        }
+        if (def.id === 'hiatus') {
+          el.innerHTML = state.phys.isInhale
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span>식도열공 조임 ↑ (역류 차단)</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>식도열공 이완 ↓ (미주신경 해방)</span>`;
+          el.style.color = state.phys.isInhale ? '#38BDF8' : '#34D399';
+          el.style.borderColor = state.phys.isInhale ? '#38BDF8' : '#34D399';
+        } else if (def.id === 'cranium') {
+          el.innerHTML = state.phys.isInhale
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span>두개골 굴곡 (Flexion · 좌우 확장)</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-indigo-300"></span><span>두개골 신전 (Extension · 이완 복귀)</span>`;
+        } else if (def.id === 'sacrum') {
+          el.innerHTML = state.phys.isInhale
+            ? `<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span>천골 후굴 (Counternutation · 상방 견인)</span>`
+            : `<span class="w-1.5 h-1.5 rounded-full bg-indigo-300"></span><span>천골 전굴 (Nutation · 하방 이완)</span>`;
+        }
+
+        worldPos.project(camera3D);
+
+        // 카메라 뒤쪽(z > 1)이면 숨김
+        if (worldPos.z > 1) {
+          el.style.opacity = '0';
+          return;
+        }
+
+        const screenX = (worldPos.x * 0.5 + 0.5) * W;
+        const screenY = (-worldPos.y * 0.5 + 0.5) * H;
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        el.style.opacity = '0.95';
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 실시간 3D 메시 애니메이션 & 카메라 업데이트 루프
+     * =========================================================================
+     */
+    function updateSimulationAnd3D(dt, now) {
+      // 1. 카메라 목표 보간
+      const target = SCENES[state.currentScene].cameraTarget;
+      const lerp = 1 - Math.exp(-dt * 0.0042);
+
+      state.cam.theta += (target.theta - state.cam.theta) * lerp;
+      state.cam.phi += (target.phi - state.cam.phi) * lerp;
+      state.cam.radius += (target.radius - state.cam.radius) * lerp;
+      state.cam.targetX += (target.targetX - state.cam.targetX) * lerp;
+      state.cam.targetY += (target.targetY - state.cam.targetY) * lerp;
+      state.cam.targetZ += (target.targetZ - state.cam.targetZ) * lerp;
+
+      const userLerp = 1 - Math.exp(-dt * 0.014);
+      state.cam.userZoomMult += (state.cam.targetUserZoomMult - state.cam.userZoomMult) * userLerp;
+      state.cam.userPanX += (state.cam.targetUserPanX - state.cam.userPanX) * userLerp;
+      state.cam.userPanY += (state.cam.targetUserPanY - state.cam.userPanY) * userLerp;
+
+      if (dom.zoomLevelLabel) {
+        dom.zoomLevelLabel.textContent = `${Math.round(state.cam.userZoomMult * 100)}%`;
+      }
+
+      // 드래그 중이 아닐 때 은은한 3D 시네마틱 오비탈 부유감
+      if (!state.cam.dragMode) {
+        state.cam.theta += Math.sin(now * 0.00065) * 0.00045;
+      }
+
+      // 구면 좌표계 → 직교 좌표계(X, Y, Z) 변환
+      const effTheta = state.cam.theta + state.cam.userThetaOffset;
+      const effPhi = Math.max(0.35, Math.min(2.65, state.cam.phi + state.cam.userPhiOffset));
+      const effRadius = Math.max(3.6, Math.min(22.0, state.cam.radius / state.cam.userZoomMult));
+
+      const lookX = state.cam.targetX + state.cam.userPanX;
+      const lookY = state.cam.targetY + state.cam.userPanY;
+      const lookZ = state.cam.targetZ;
+
+      camera3D.position.set(
+        lookX + effRadius * Math.sin(effPhi) * Math.sin(effTheta),
+        lookY + effRadius * Math.cos(effPhi),
+        lookZ + effRadius * Math.sin(effPhi) * Math.cos(effTheta)
+      );
+      camera3D.lookAt(lookX, lookY, lookZ);
+
+      // 2. 씬별 생리학 물리 상태 계산
+      if (state.currentScene === 0) {
+        state.phys.breath = 0.24 + Math.sin(now * 0.0055) * 0.13;
+        state.phys.isInhale = Math.cos(now * 0.0055) > 0;
+        state.phys.sympatheticHeat = 0.95;
+        state.phys.vagusGlow = 0.22;
+        state.phys.bpm = 98 + Math.sin(now * 0.003) * 3;
+        state.phys.hiatusTightness = 0.35;
+      } else if (state.currentScene === 1) {
+        const c = (now % 7000) / 7000;
+        if (c < 0.42) {
+          state.phys.isInhale = true;
+          state.phys.breath = Math.sin((c / 0.42) * (Math.PI * 0.5));
+        } else {
+          state.phys.isInhale = false;
+          state.phys.breath = Math.cos(((c - 0.42) / 0.58) * (Math.PI * 0.5));
+        }
+        state.phys.hiatusTightness = 0.2 + state.phys.breath * 0.78;
+        state.phys.vagusGlow = 0.45 + (1 - state.phys.breath) * 0.45;
+        state.phys.sympatheticHeat = 0.32;
+        state.phys.bpm = 76 - (1 - state.phys.breath) * 8;
+      } else if (state.currentScene === 2) {
+        const c = (now % 9000) / 9000;
+        if (c < 0.3) {
+          state.phys.isInhale = true;
+          state.phys.breath = Math.sin((c / 0.3) * (Math.PI * 0.5));
+        } else {
+          state.phys.isInhale = false;
+          state.phys.breath = Math.cos(((c - 0.3) / 0.7) * (Math.PI * 0.5));
+        }
+        state.phys.hiatusTightness = 0.18 + state.phys.breath * 0.6;
+        state.phys.vagusGlow = 0.68 + (1 - state.phys.breath) * 0.32;
+        state.phys.sympatheticHeat = 0.1;
+        state.phys.bpm = 64 - (1 - state.phys.breath) * 5;
+      } else if (state.currentScene === 3) {
+        state.phys.breath = 0.45 + Math.sin(now * 0.0014) * 0.42;
+        state.phys.isInhale = Math.cos(now * 0.0014) > 0;
+        state.phys.hiatusTightness = 0.25 + state.phys.breath * 0.5;
+        state.phys.vagusGlow = 0.96;
+        state.phys.sympatheticHeat = 0.06;
+        state.phys.bpm = 60;
+      } else if (state.currentScene === 4) {
+        updateScene5Physics(dt);
+      }
+
+      // 3. 실시간 3D 메시 버텍스 & 머티리얼 업데이트
+      applyPhysicsTo3DMeshes(dt, now);
+
+      // 4. 텔레메트리 HUD 및 3D 공간 라벨 업데이트
+      syncTelemetryHUD();
+      updateSpatialLabelsProjection();
+    }
+
+    function applyPhysicsTo3DMeshes(dt, now) {
+      const b = state.phys.breath; // 0(날숨: 돔 상승) ~ 1(들숨: 돔 평탄화 하강)
+      const vGlow = state.phys.vagusGlow;
+      const heat = state.phys.sympatheticHeat;
+
+      // (1) 폐 3D 팽창 및 산소 발광
+      if (anatomy.leftLung && anatomy.rightLung) {
+        const s = 1 + b * 0.14;
+        anatomy.leftLung.scale.set(s, 1 + b * 0.1, s);
+        anatomy.rightLung.scale.set(s, 1 + b * 0.1, s);
+        anatomy.lungMat.emissiveIntensity = 0.25 + b * 0.42;
+        anatomy.lungMat.opacity = 0.28 + b * 0.16;
+      }
+
+      // (2) 심장 실시간 BPM 박동
+      state.phys.heartPhase += (dt / 1000) * (state.phys.bpm / 60) * Math.PI * 2;
+      if (anatomy.heartGroup) {
+        const pulse = Math.pow(Math.max(0, Math.sin(state.phys.heartPhase)), 4);
+        const hs = 1 + pulse * 0.14;
+        anatomy.heartGroup.scale.set(hs, hs, hs);
+        anatomy.heartGroup.position.y = 1.02 - b * 0.12;
+        anatomy.heartMat.emissiveIntensity = 0.45 + pulse * 0.65;
+      }
+
+      // (3) 3D 횡격막 돔(Diaphragm) 실시간 버텍스 변형!
+      // 날숨(b=0)일 때 중앙이 볼록한 돔(Dome) 모양, 들숨(b=1)일 때 평평하게 하강
+      if (anatomy.diaphragmMesh && anatomy.diaphragmBasePositions) {
+        const posAttr = anatomy.diaphragmMesh.geometry.attributes.position;
+        const base = anatomy.diaphragmBasePositions;
+        const domeHeight = 0.72 * (1 - b * 0.78); // 날숨 시 0.72, 들숨 시 0.16
+
+        for (let i = 0; i < posAttr.count; i++) {
+          const bx = base[i * 3];
+          const by = base[i * 3 + 1];
+          const bz = base[i * 3 + 2];
+
+          // 중심으로부터의 정규화 반경
+          const rNorm = Math.min(1, Math.hypot(bx / 2.65, bz / 1.75));
+          const domeOffset = Math.cos(rNorm * Math.PI * 0.5) * domeHeight;
+          posAttr.setY(i, by + domeOffset);
+        }
+        posAttr.needsUpdate = true;
+        anatomy.diaphragmMesh.geometry.computeVertexNormals();
+        anatomy.diaphragmMesh.position.y = -0.48 - b * 0.38;
+      }
+
+      // (4) 식도열공 생리학적 괄약근 토러스 조임(Scale) & 위치 연동
+      if (anatomy.hiatusRing) {
+        const squeeze = state.phys.hiatusTightness;
+        const ringScale = 1.15 - squeeze * 0.36;
+        anatomy.hiatusRing.scale.set(ringScale, ringScale, 1 + squeeze * 0.25);
+        anatomy.hiatusRing.position.y = -0.15 - b * 0.62;
+        anatomy.hiatusMat.color.setHex(squeeze > 0.5 ? 0x38bdf8 : 0x34d399);
+        anatomy.hiatusMat.emissive.setHex(squeeze > 0.5 ? 0x0284c7 : 0x059669);
+        anatomy.hiatusMat.emissiveIntensity = 0.55 + squeeze * 0.75;
+      }
+
+      // (5) 복부 장기(위장, 간) 미세 호흡 연동
+      if (anatomy.stomachGroup) anatomy.stomachGroup.position.y = -1.72 - b * 0.18;
+      if (anatomy.liverGroup) anatomy.liverGroup.position.y = -1.42 - b * 0.18;
+
+      // (6) 연수 허브 & 미주신경 튜브 생체발광 강도
+      if (anatomy.medullaMat) {
+        anatomy.medullaMat.emissiveIntensity = 0.3 + vGlow * 1.35;
+        const ms = 0.9 + vGlow * 0.35;
+        anatomy.medullaHub.scale.set(ms, 1, ms);
+      }
+      anatomy.vagusMats.forEach(mat => {
+        mat.emissiveIntensity = 0.25 + vGlow * 1.45;
+      });
+
+      // (7) 교감신경간 과열 강도
+      anatomy.sympatheticMats.forEach(mat => {
+        mat.emissiveIntensity = 0.12 + heat * 1.5;
+      });
+
+      // (8) Scene 2(식도열공 클로즈업)에서 전경 갈비뼈 투명도 조절로 내부 시야 확보
+      const targetRibOpacity = state.currentScene === 1 ? 0.06 : 0.22;
+      anatomy.ribMaterials.forEach(mat => {
+        mat.opacity += (targetRibOpacity - mat.opacity) * 0.1;
+      });
+      if (anatomy.ribcageGroup) {
+        const ribExpand = 1 + b * 0.04;
+        anatomy.ribcageGroup.scale.set(ribExpand, 1, ribExpand);
+      }
+
+      // (8-B) 두개골(Cranium) & 천골(Sacrum) 호흡 연동 3D 움직임 (Craniosacral Coupling)
+      // 들숨(b=1): 접형후두연골결합(SBS) 굴곡(Flexion) → 두개골 좌우(X) 확장·전후(Z) 단축 & 천골 기저부 후상방 견인(Counternutation)
+      // 날숨(b=0): 신전(Extension) → 두개골 전후 복귀 & 천골 전굴(Nutation)
+      if (anatomy.brainGroup && anatomy.craniumShell) {
+        anatomy.brainGroup.rotation.x = -b * 0.085; // 후두골 상승(상방 견인) 틸트
+        anatomy.brainGroup.position.y = 4.15 + b * 0.07;
+        anatomy.craniumShell.scale.set(
+          1.12 + b * 0.065, // 좌우 폭 확장
+          0.92 - b * 0.025, // 상하 높이 미세 감소
+          1.32 - b * 0.055  // 전후 길이 단축
+        );
+      }
+
+      if (anatomy.sacrumGroup) {
+        // 천골은 경막관을 통해 두개골과 동기화되어 S2 축을 기준으로 틸트
+        anatomy.sacrumGroup.rotation.x = -b * 0.22; // 들숨 시 천골 첨부 전방·기저부 후방(Counternutation)
+        anatomy.sacrumGroup.position.y = -3.95 + b * 0.09;
+      }
+
+      if (anatomy.duralTubeMesh && anatomy.duralTubeMat) {
+        // 경막관(Dural Tube) 상하 견인 텐션 및 발광 변화
+        anatomy.duralTubeMesh.scale.set(1 - b * 0.08, 1 + b * 0.022, 1 - b * 0.08);
+        anatomy.duralTubeMat.emissiveIntensity = 0.38 + b * 0.65;
+      }
+
+      // 뇌척수액(CSF) 펌핑 순환 입자 이동
+      anatomy.csfPulses.forEach(cp => {
+        const csfSpeed = 0.16 + Math.abs(b - 0.5) * 0.28;
+        cp.t += (dt / 1000) * csfSpeed * cp.dir;
+        if (cp.t > 1) cp.t -= 1;
+        if (cp.t < 0) cp.t += 1;
+
+        const pt = cp.curve.getPointAt(cp.t);
+        cp.mesh.position.copy(pt);
+        const s = 0.75 + vGlow * 0.45;
+        cp.mesh.scale.set(s, s, s);
+      });
+
+      // (9) 미주신경 활동전위 빛 입자 이동
+      const vSpeedMult = 0.45 + vGlow * 1.25;
+      anatomy.vagusPulses.forEach(p => {
+        p.t += (dt / 1000) * p.speed * vSpeedMult;
+        if (p.t > 1) p.t -= 1;
+
+        const curve = anatomy.vagusCurves[p.curveIdx];
+        const pt = curve.getPointAt(p.t);
+        p.mesh.position.copy(pt);
+        const pScale = vGlow < 0.25 ? 0.01 : (0.55 + vGlow * 0.85);
+        p.mesh.scale.set(pScale, pScale, pScale);
+      });
+
+      // (10) 교감신경 스파크 입자 이동
+      anatomy.sympPulses.forEach(sp => {
+        sp.t += (dt / 1000) * sp.speed * (0.4 + heat * 1.4);
+        if (sp.t > 1) sp.t -= 1;
+
+        sp.mesh.position.set(sp.side, -2.8 + sp.t * 5.9, -0.82);
+        const sScale = heat < 0.15 ? 0.01 : (0.6 + heat * 0.8);
+        sp.mesh.scale.set(sScale, sScale, sScale);
+      });
+
+      // (11) 배경 입자 천천히 회전
+      if (anatomy.ambientStars) {
+        anatomy.ambientStars.rotation.y += dt * 0.00004;
+      }
+    }
+
+    function updateScene5Physics(dt) {
+      if (state.isManualHolding) {
+        state.phys.breath = Math.min(1, state.phys.breath + dt * 0.00045);
+        state.phys.isInhale = true;
+      } else if (state.manualModeActive) {
+        state.phys.breath = Math.max(0, state.phys.breath - dt * 0.00022);
+        state.phys.isInhale = false;
+      } else {
+        const presets = {
+          stress: { inhale: 2000, exhale: 2000 },
+          relax:  { inhale: 4000, exhale: 8000 },
+          deep:   { inhale: 5000, exhale: 10000 }
+        };
+        const p = presets[state.simPreset] || presets.relax;
+        const total = p.inhale + p.exhale;
+        state.simCycleTime = (state.simCycleTime + dt) % total;
+
+        if (state.simCycleTime < p.inhale) {
+          state.phys.isInhale = true;
+          state.phys.breath = Math.sin((state.simCycleTime / p.inhale) * (Math.PI * 0.5));
+        } else {
+          state.phys.isInhale = false;
+          state.phys.breath = Math.cos(((state.simCycleTime - p.inhale) / p.exhale) * (Math.PI * 0.5));
+        }
+      }
+
+      const b = state.phys.breath;
+      state.phys.hiatusTightness = 0.18 + b * 0.78;
+
+      if (!state.manualModeActive && state.simPreset === 'stress') {
+        state.phys.sympatheticHeat = 0.88;
+        state.phys.vagusGlow = 0.25 + (1 - b) * 0.14;
+        state.phys.bpm = 92 + b * 6;
+      } else {
+        state.phys.sympatheticHeat = 0.14 * b;
+        state.phys.vagusGlow = 0.45 + (1 - b) * 0.53;
+        state.phys.bpm = 74 - (1 - b) * 16;
+      }
+    }
+
+    function syncTelemetryHUD() {
+      const isInhale = state.phys.isInhale;
+      dom.telemetryPhaseLabel.textContent = state.currentScene === 0 ? "STRESS" : (isInhale ? "INHALE" : "EXHALE");
+      dom.telemetryPhaseLabel.className = state.currentScene === 0
+        ? "text-rose-400 font-bold"
+        : (isInhale ? "text-sky-400 font-bold" : "text-emerald-400 font-bold");
+
+      dom.hudBpm.textContent = Math.round(state.phys.bpm);
+      const vPct = Math.round(state.phys.vagusGlow * 100);
+      dom.hudVagusPct.textContent = `${vPct}%`;
+      dom.hudVagusBar.style.width = `${Math.min(100, Math.max(8, vPct))}%`;
+
+      const hPct = Math.round(state.phys.hiatusTightness * 100);
+      dom.hudHiatusState.textContent = hPct > 55 ? "조임 (역류방어)" : "이완 (신경해방)";
+      dom.hudHiatusBar.style.width = `${Math.min(100, Math.max(12, hPct))}%`;
+    }
+
+    function mainLoop(now) {
+      const dt = Math.min(50, now - state.lastFrameTime);
+      state.lastFrameTime = now;
+
+      if (state.isPlaying && state.hasStarted && state.currentScene < 4) {
+        const scene = SCENES[state.currentScene];
+        state.sceneElapsedMs += dt;
+        const progress = Math.min(100, (state.sceneElapsedMs / scene.durationMs) * 100);
+        dom.sceneProgressBar.style.width = `${progress}%`;
+
+        if (state.sceneElapsedMs >= scene.durationMs) {
+          goToScene(state.currentScene + 1, true);
+        }
+      }
+
+      updateSimulationAnd3D(dt, now);
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+      }
+      requestAnimationFrame(mainLoop);
+    }
+
+    /**
+     * =========================================================================
+     * 한국어 음성 나레이션 (Web Speech API)
+     * =========================================================================
+     */
+    const ttsManager = {
+      supported: 'speechSynthesis' in window,
+      koVoice: null,
+
+      init() {
+        if (!this.supported) {
+          dom.ttsStatusText.textContent = "음성 미지원 (자막 모드)";
+          return;
+        }
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          this.koVoice = voices.find(v => v.lang.includes('ko') && (v.name.includes('Google') || v.name.includes('Heami') || v.name.includes('Yuna')))
+                      || voices.find(v => v.lang.includes('ko'));
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      },
+
+      speak(text) {
+        if (!this.supported || state.isMuted || !state.hasStarted) return;
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (this.koVoice) utterance.voice = this.koVoice;
+          utterance.lang = 'ko-KR';
+          utterance.rate = 1.02;
+
+          utterance.onstart = () => {
+            dom.ttsStatusText.textContent = "나레이션 재생 중...";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+          };
+          utterance.onend = () => {
+            dom.ttsStatusText.textContent = "나레이션 대기 중";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {}
+      },
+
+      stop() {
+        if (!this.supported) return;
+        try {
+          window.speechSynthesis.cancel();
+          dom.ttsStatusText.textContent = state.isMuted ? "음소거됨" : "일시정지됨";
+          dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-slate-500";
+        } catch (e) {}
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 씬 전환 및 3D 카메라 제어 바인딩
+     * =========================================================================
+     */
+    function setUserZoom(nextZoom) {
+      state.cam.targetUserZoomMult = Math.max(0.55, Math.min(3.2, nextZoom));
+    }
+
+    function resetUserCameraView() {
+      state.cam.userThetaOffset = 0;
+      state.cam.userPhiOffset = 0;
+      state.cam.targetUserZoomMult = 1.0;
+      state.cam.targetUserPanX = 0;
+      state.cam.targetUserPanY = 0;
+    }
+
+    function goToScene(index, autoSpeak = true) {
+      if (index < 0) index = 0;
+      if (index >= SCENES.length) index = SCENES.length - 1;
+
+      state.currentScene = index;
+      state.sceneElapsedMs = 0;
+      const scene = SCENES[index];
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.className = idx === index
+          ? "scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer"
+          : "scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer";
+      });
+
+      dom.hudSceneNum.textContent = scene.num;
+      dom.hudSceneTitle.textContent = scene.title;
+      dom.hudSubBadge.innerHTML = `<span>${scene.badgeText}</span>`;
+      dom.hudSubBadge.className = `inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] w-fit backdrop-blur-sm ${scene.badgeClass}`;
+      dom.hudCameraInfo.textContent = scene.camInfo;
+
+      dom.floatingCardTitle.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="${scene.cardColor}">${scene.cardTitle}</span>`;
+      dom.floatingCardBody.textContent = scene.cardBody;
+
+      dom.subtitleText.innerHTML = scene.subtitleHtml;
+      dom.currentSceneCounter.textContent = index + 1;
+      dom.sceneProgressBar.style.width = index === 4 ? "100%" : "0%";
+
+      dom.scene4OrganLegend.classList.toggle('hidden', index !== 3);
+      dom.simulatorControls.classList.toggle('hidden', index !== 4);
+
+      dom.prevSceneBtn.disabled = index === 0;
+      dom.nextSceneBtn.disabled = index === SCENES.length - 1;
+
+      if (autoSpeak && state.hasStarted && !state.isMuted) {
+        ttsManager.speak(scene.narrationText);
+      }
+    }
+
+    function setPlayState(playing) {
+      state.isPlaying = playing;
+      dom.iconPlay.classList.toggle('hidden', playing);
+      dom.iconPause.classList.toggle('hidden', !playing);
+      dom.playPauseLabel.textContent = playing ? "일시정지" : "재생";
+
+      if (playing) {
+        if (!state.isMuted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      } else {
+        ttsManager.stop();
+      }
+    }
+
+    function updateMuteUI() {
+      dom.iconSoundOn.classList.toggle('hidden', state.isMuted);
+      dom.iconSoundOff.classList.toggle('hidden', !state.isMuted);
+      dom.muteBtnLabel.textContent = state.isMuted ? "음소거" : "음성 ON";
+    }
+
+    function bindEvents() {
+      // 시작 버튼
+      dom.startWithVoiceBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = false;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, true);
+        setPlayState(true);
+      });
+
+      dom.startSilentBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = true;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, false);
+        setPlayState(true);
+      });
+
+      // 3D WebGL 마우스/터치 궤도 회전 · 패닝 · 줌 인터랙션
+      const targetEl = dom.threeContainer;
+      targetEl.addEventListener('contextmenu', e => e.preventDefault());
+
+      targetEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setUserZoom(state.cam.targetUserZoomMult * factor);
+      }, { passive: false });
+
+      targetEl.addEventListener('dblclick', () => {
+        resetUserCameraView();
+      });
+
+      targetEl.addEventListener('mousedown', e => {
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+        if (e.shiftKey || e.button === 1 || e.button === 2) {
+          state.cam.dragMode = 'pan';
+        } else {
+          state.cam.dragMode = 'orbit';
+        }
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!state.cam.dragMode) return;
+        const dx = e.clientX - state.cam.dragStartX;
+        const dy = e.clientY - state.cam.dragStartY;
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+
+        if (state.cam.dragMode === 'pan') {
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - dx * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + dy * panSpeed));
+        } else {
+          // 360도 자유 궤도 회전
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 멀티터치 핀치 줌 & 3D 회전
+      targetEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          state.cam.dragMode = 'orbit';
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          state.cam.dragMode = 'pinch';
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          state.cam.pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          state.cam.pinchStartZoom = state.cam.targetUserZoomMult;
+          state.cam.pinchCenterX = (t0.clientX + t1.clientX) * 0.5;
+          state.cam.pinchCenterY = (t0.clientY + t1.clientY) * 0.5;
+        }
+      }, { passive: false });
+
+      targetEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && state.cam.dragMode === 'orbit') {
+          const dx = e.touches[0].clientX - state.cam.dragStartX;
+          const dy = e.touches[0].clientY - state.cam.dragStartY;
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        } else if (e.touches.length === 2 && state.cam.dragMode === 'pinch') {
+          e.preventDefault();
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          const midX = (t0.clientX + t1.clientX) * 0.5;
+          const midY = (t0.clientY + t1.clientY) * 0.5;
+
+          if (state.cam.pinchStartDist > 0) {
+            setUserZoom(state.cam.pinchStartZoom * (dist / state.cam.pinchStartDist));
+          }
+
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - (midX - state.cam.pinchCenterX) * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + (midY - state.cam.pinchCenterY) * panSpeed));
+          state.cam.pinchCenterX = midX;
+          state.cam.pinchCenterY = midY;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 줌 & 시점 초기화 버튼
+      dom.resetCameraBtn.addEventListener('click', resetUserCameraView);
+      dom.hudResetViewBtn.addEventListener('click', resetUserCameraView);
+      dom.zoomInBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult * 1.25));
+      dom.zoomOutBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult / 1.25));
+
+      // 음소거 토글
+      dom.muteToggleBtn.addEventListener('click', () => {
+        state.isMuted = !state.isMuted;
+        updateMuteUI();
+        if (state.isMuted) ttsManager.stop();
+        else if (state.isPlaying && state.hasStarted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // 씬 탭 전환
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.addEventListener('click', () => {
+          if (!state.hasStarted) {
+            state.hasStarted = true;
+            dom.startOverlay.classList.add('hidden');
+          }
+          goToScene(idx, true);
+          if (!state.isPlaying) setPlayState(true);
+        });
+      });
+
+      // 재생/일시정지 및 이전/다음
+      dom.playPauseBtn.addEventListener('click', () => {
+        if (!state.hasStarted) {
+          state.hasStarted = true;
+          dom.startOverlay.classList.add('hidden');
+        }
+        setPlayState(!state.isPlaying);
+      });
+      dom.prevSceneBtn.addEventListener('click', () => goToScene(state.currentScene - 1, true));
+      dom.nextSceneBtn.addEventListener('click', () => goToScene(state.currentScene + 1, true));
+      dom.replayNarrationBtn.addEventListener('click', () => {
+        state.sceneElapsedMs = 0;
+        if (state.isMuted) {
+          state.isMuted = false;
+          updateMuteUI();
+        }
+        ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // Scene 5 프리셋 & 수동 홀드 버튼
+      dom.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.manualModeActive = false;
+          state.isManualHolding = false;
+          state.simPreset = btn.dataset.preset;
+          state.simCycleTime = 0;
+
+          dom.presetBtns.forEach(b => {
+            b.className = "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer";
+          });
+          btn.className = "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/25 text-amber-300 border border-amber-400/60 transition cursor-pointer";
+        });
+      });
+
+      const startHold = (e) => {
+        e.preventDefault();
+        state.manualModeActive = true;
+        state.isManualHolding = true;
+        dom.manualHoldBtn.textContent = "들숨 중... (손을 떼면 긴 날숨)";
+      };
+      const endHold = (e) => {
+        if (state.isManualHolding) {
+          e.preventDefault();
+          state.isManualHolding = false;
+          dom.manualHoldBtn.textContent = "누르고 있으면 들숨 / 떼면 긴 날숨";
+        }
+      };
+
+      dom.manualHoldBtn.addEventListener('mousedown', startHold);
+      window.addEventListener('mouseup', endHold);
+      dom.manualHoldBtn.addEventListener('touchstart', startHold, { passive: false });
+      window.addEventListener('touchend', endHold);
+    }
+
+    window.onload = function () {
+      initThree3D();
+      ttsManager.init();
+      bindEvents();
+      requestAnimationFrame(mainLoop);
+    };
+  </script>
+</body>
+</html>
