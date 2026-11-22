@@ -1,4 +1,4 @@
-# pt-3d-series · 3D 강의 애니메이션 통합 포털 만들기
+# pt-3d-respiration · 3D 강의 애니메이션 통합 포털 만들기
 
 여러 편의 True 3D 강의 애니메이션(Three.js, 장면 5개, 한국어 음성 나레이션)을 **HTML 파일 하나짜리 통합 포털**로 묶는다.
 첫 사례: `examples/breath-series` (호흡 생리학 4부작).
@@ -14,6 +14,7 @@
 
 ## 폴더
 ```
+index.html                      배포용 완성본(호흡 생리학 4부작 포털) — Vercel이 이 파일을 보여 줌
 engine/narration_engine.js      고도화 나레이션 엔진 (각 편의 ttsManager 자리에 들어감)
 portal/portal_template.html     포털 틀 (__SERIES_TITLE__ 등 자리 표시자)
 tools/check_episode.py          편이 '편 규약'을 지키는지 확인
@@ -59,3 +60,9 @@ python tools/test_portal.py examples/breath-series/series.json
 ## 저장 키 (브라우저 localStorage)
 - 노트 `mp-notes-v1:<편 id>`, 수정 `mp-edits-v1:<편 id>`, 수정 기능 켜기 `mp-edit-on`, 나레이션 설정 `<series id>-narration-v1`
 - 편 id를 바꾸면 학생 노트가 이어지지 않는다. 한번 정한 id는 바꾸지 않는다.
+
+## 배포 (Vercel)
+- 이 저장소는 Vercel에 연결되어 있어, `main`에 push하면 저장소 맨 위의 `index.html`이 그대로 배포된다(빌드 과정 없음).
+- 포털을 다시 만들면 결과를 `index.html`로 복사해 함께 커밋한다.
+  `python tools/build.py examples/breath-series/series.json && cp "examples/breath-series/호흡생리학_4부작_통합포털.html" index.html`
+- 다른 시리즈를 따로 배포하려면 그 시리즈용 저장소·Vercel 프로젝트를 새로 만들거나, `index.html` 대신 `<시리즈>/index.html`로 두고 처음 화면에서 링크한다.
