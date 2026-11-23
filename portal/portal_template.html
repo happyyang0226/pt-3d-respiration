@@ -277,6 +277,13 @@
     }
     return decoded[i];
   }
+  /* 오프라인 내장 자원(vend-three · vend-tw)이 있으면 편의 CDN 자리에 끼워 넣는다 → 휴대폰·인터넷 없는 곳에서도 실행 */
+  function withVendor(html) {
+    const th = document.getElementById('vend-three'), tw = document.getElementById('vend-tw');
+    if (th) html = html.replace(/<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/three\.js\/r128\/three\.min\.js"><\/script>/, () => '<script>' + th.textContent + '<\/script>');
+    if (tw) html = html.replace(/<script src="https:\/\/cdn\.tailwindcss\.com"><\/script>/, () => '<style>' + tw.textContent + '</style>');
+    return html;
+  }
   function b64Utf8(str) {
     const bytes = new TextEncoder().encode(str);
     let bin = '';
@@ -415,7 +422,7 @@
         setTimeout(() => { try { frame.contentWindow.postMessage({ app: 'mp', slide: pending.slide, hl: pending.hl || null, go: true }, '*'); } catch (e) {} }, 300);
       }
     });
-    frame.srcdoc = getEpisodeHtml(i);
+    frame.srcdoc = withVendor(getEpisodeHtml(i));
     stage.appendChild(frame);
 
     current = i;

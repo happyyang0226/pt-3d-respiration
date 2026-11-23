@@ -43,6 +43,37 @@ EPS = [
   nxt="인체의 움직임 조절 2편 근수축 (웹앱)"),
 ]
 
+MOBILE_CSS = """
+    /* ===== 휴대폰 세로 화면 ===== */
+    @media (max-width: 640px) {
+      #viewportContainer { aspect-ratio: auto !important; min-height: 0 !important; height: 64vh; max-height: 620px; }
+      #telemetryHud { width: auto !important; padding: 5px 9px !important; }
+      #telemetryHud .tel-head, #telemetryHud .tel-extra { display: none !important; }
+      #telemetryHud .flex.items-baseline { margin: 0 !important; gap: 6px; }
+      div:has(> #zoomOutBtn) { display: none !important; }
+      .spatial-tag { font-size: 9px !important; padding: 1px 6px !important; }
+      .scene-slide .sc-txt > p { display: none !important; }
+      .scene-slide .sc-txt h2 { font-size: 11px !important; }
+      .scene-slide .sub-box { padding: 6px 10px !important; }
+      .scene-slide .sub-box p { font-size: 11.5px !important; line-height: 1.5 !important; }
+      #simulatorControls { top: 3.1rem !important; bottom: auto !important; padding: 6px !important; border-radius: 12px !important; }
+      #simulatorControls > div { gap: 5px !important; }
+      #simulatorControls > div > div { flex-wrap: nowrap !important; overflow-x: auto; justify-content: flex-start !important; width: 100%; scrollbar-width: none; }
+      #simulatorControls > div > div > span { display: none !important; }
+      #simulatorControls .sim-preset-btn { padding: 4px 8px !important; font-size: 11px !important; white-space: nowrap; flex: none; }
+      #manualHoldBtn { padding: 6px 10px !important; font-size: 12px !important; }
+      .scene-slide .sc-txt:first-child { max-width: 56% !important; }
+      #telemetryHud span { font-size: 11px; }
+      header > div:first-child > span { display: none !important; }
+      #muteBtnLabel, #resetCameraBtn span { display: none !important; }
+      header { padding: 6px 10px !important; gap: 6px !important; }
+      #scene4OrganLegend { display: none !important; }
+      header h1 { font-size: 13px !important; }
+      header p { display: none !important; }
+      main { padding: 6px !important; }
+    }
+"""
+
 def one(src, old, new):
     assert src.count(old) == 1, old[:70]
     return src.replace(old, new)
@@ -61,12 +92,13 @@ for E in EPS:
     s = s[:a] + tabs.lstrip() + "      " + s[b:]
     s = re.sub(r'(<h2 class="text-xl sm:text-3xl font-black text-white mb-3 tracking-tight">\s*).*?(\s*</h2>)', lambda m: m.group(1) + f"{E['title']}: {E['sub']}" + m.group(2), s, count=1, flags=re.S)
     s = re.sub(r'(<p class="text-xs sm:text-sm text-slate-300 max-w-xl mb-6 leading-relaxed">\s*).*?(\s*</p>)', lambda m: m.group(1) + E["over"] + m.group(2), s, count=1, flags=re.S)
+    s = one(s, "  </style>\n</head>", MOBILE_CSS + "  </style>\n</head>")
     s = s.replace("Interactive Real-Time 3D Anatomy Engine", "Interactive Real-Time 3D Membrane Engine")
     # 텔레메트리 HUD
     a = s.index("          <!-- 생체 텔레메트리 HUD -->"); b = s.index("        <!-- 좌측 플로팅 해부학 콜아웃 카드 -->")
     hud = f'''          <!-- 생체 텔레메트리 HUD -->
-          <div class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-44 sm:w-60 pointer-events-none">
-            <div class="text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
+          <div id="telemetryHud" class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-44 sm:w-60 pointer-events-none">
+            <div class="tel-head text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
               <span>MEMBRANE TELEMETRY</span>
               <span id="telemetryPhaseLabel" class="text-sky-300 font-bold">READY</span>
             </div>
@@ -74,6 +106,7 @@ for E in EPS:
               <span class="text-[11px] text-slate-300">막전위 (Vm)</span>
               <div class="font-mono-tech"><span id="hudVm" class="text-base sm:text-lg font-bold text-sky-300">-70</span> <span class="text-[10px] text-slate-400">mV</span></div>
             </div>
+            <div class="tel-extra">
             <canvas id="vmScope" width="220" height="64" class="w-full h-12 sm:h-14 mb-2 rounded bg-slate-950/70 border border-slate-800"></canvas>
             <div class="mb-2">
               <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">{E['g1']}</span><span id="hudG1Val" class="font-mono-tech font-bold text-amber-300">—</span></div>
@@ -82,6 +115,7 @@ for E in EPS:
             <div>
               <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">{E['g2']}</span><span id="hudG2Val" class="font-mono-tech font-bold text-sky-400">—</span></div>
               <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div id="hudG2Bar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-150" style="width: 20%;"></div></div>
+            </div>
             </div>
           </div>
         </div>

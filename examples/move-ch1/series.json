@@ -11,6 +11,7 @@
   },
   "glossary": "glossary.json",
   "medical": true,
+  "offline": true,
   "output": "움직임조절1편_5부작_통합포털.html",
   "episodes": [
     {

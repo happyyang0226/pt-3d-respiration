@@ -44,6 +44,15 @@ rep = {
 for k, v in rep.items():
     assert out.count(k) == 1, k
     out = out.replace(k, v)
+# 오프라인·휴대폰용: three.js와 미리 만든 Tailwind CSS를 포털에 한 벌만 내장 → 편을 열 때 CDN 자리에 끼워 넣음
+if cfg.get("offline"):
+    three = (REPO / "vendor" / "offline" / "three.r128.min.js").read_text(encoding="utf-8")
+    tw = (base / "tw.css").read_text(encoding="utf-8")
+    assert "</script" not in three and "</script" not in tw
+    vend = '<script type="text/plain" id="vend-three">' + three + '</script>\n<script type="text/plain" id="vend-tw">' + tw + '</script>\n'
+    anchor = '<script type="application/json" id="payload">'
+    assert out.count(anchor) == 1
+    out = out.replace(anchor, vend + anchor)
 dst = (base / cfg.get("output", "portal.html")).resolve()
 dst.write_text(out, encoding="utf-8")
 print(f"{dst}  ({dst.stat().st_size/1024:.0f} KB, {len(episodes)}편, 용어 {len(glossary)}개)")

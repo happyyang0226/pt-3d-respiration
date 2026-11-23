@@ -273,7 +273,7 @@
         const el = spatialLabelNodes[def.id]; if (!el) return;
         if (!def.scenes.includes(state.currentScene)) { el.style.opacity = '0'; return; }
         const p = (typeof def.pos === 'function' ? def.pos() : V3(def.pos[0], def.pos[1], def.pos[2])).clone();
-        if (def.dyn) { const tx = def.dyn(); if (tx && el._t !== tx) { el._t = tx; el.lastChild.textContent = tx; } }
+        if (def.dyn) { const tx = def.dyn(); if (!tx || !tx.trim()) { el.style.opacity = '0'; return; } if (el._t !== tx) { el._t = tx; el.lastChild.textContent = tx; } }
         p.project(camera3D);
         if (p.z > 1) { el.style.opacity = '0'; return; }
         el.style.left = `${(p.x * .5 + .5) * rect.width}px`; el.style.top = `${(-p.y * .5 + .5) * rect.height}px`; el.style.opacity = '0.95';
@@ -309,7 +309,8 @@
       if (!state.cam.dragMode) state.cam.theta += Math.sin(now * 0.00065) * 0.00045;
       const effTheta = state.cam.theta + state.cam.userThetaOffset;
       const effPhi = Math.max(0.35, Math.min(2.65, state.cam.phi + state.cam.userPhiOffset));
-      const effRadius = Math.max(3.6, Math.min(26.0, state.cam.radius / state.cam.userZoomMult));
+      const asp = camera3D.aspect || 1.6, fit = asp < 1.3 ? Math.min(2.0, Math.pow(1.6 / asp, 0.8)) : 1; /* 세로 화면이면 뒤로 물러나 전체가 보이게 */
+      const effRadius = Math.max(3.6, Math.min(34.0, state.cam.radius * fit / state.cam.userZoomMult));
       const lx = state.cam.targetX + state.cam.userPanX, ly = state.cam.targetY + state.cam.userPanY, lz = state.cam.targetZ;
       camera3D.position.set(lx + effRadius * Math.sin(effPhi) * Math.sin(effTheta), ly + effRadius * Math.cos(effPhi), lz + effRadius * Math.sin(effPhi) * Math.cos(effTheta));
       camera3D.lookAt(lx, ly, lz);
