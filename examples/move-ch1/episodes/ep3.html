@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이온 펌프: Na⁺-K⁺ 펌프 · Ca²⁺ 펌프 · NCX (3편 - True 3D)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts: Noto Sans KR & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #040711;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-deep);
+      color: #F8FAFC;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 글래스모피즘 HUD 패널 */
+    .glass-panel {
+      background: rgba(8, 14, 28, 0.74);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* WebGL 캔버스 인터랙션 커서 */
+    #threeContainer canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #threeContainer canvas:active {
+      cursor: grabbing;
+    }
+
+    /* 3D 공간 투영 라벨 태그 */
+    .spatial-tag {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#040711]">
+
+  <!-- 상단 시네마틱 헤더 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 z-30">
+    <div class="flex items-center gap-3">
+      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono-tech font-bold bg-sky-500/15 text-sky-300 border border-sky-400/40 shadow-[0_0_15px_rgba(56,189,248,0.28)]">
+        TRUE 3D WEBGL · EPISODE 03
+      </span>
+      <div>
+        <h1 class="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-100">
+          이온 <span class="text-indigo-300">펌프</span>: Na⁺-K⁺ 펌프와 <span class="text-emerald-400">Ca²⁺</span> 펌프
+        </h1>
+        <p class="text-[11px] text-slate-400 hidden sm:block">좌클릭 드래그: 360° 3D 궤도 회전 · 휠/버튼: 줌 · Shift+드래그: 시점 이동</p>
+      </div>
+    </div>
+
+    <!-- 우측 오디오 및 3D 카메라 리셋 컨트롤 -->
+    <div class="flex items-center gap-2">
+      <button id="resetCameraBtn" type="button"
+        class="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/35 flex items-center gap-1.5 transition cursor-pointer"
+        title="3D 카메라 시점 초기화">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="hidden sm:inline">3D 시점 정렬</span>
+      </button>
+
+      <!-- TTS 상태 표시 -->
+      <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+        <span id="ttsIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="ttsStatusText">한국어 음성 준비됨</span>
+      </div>
+
+      <!-- 음성 켜기/음소거 토글 -->
+      <button id="muteToggleBtn" type="button"
+        class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer">
+        <svg id="iconSoundOn" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+        <svg id="iconSoundOff" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+        </svg>
+        <span id="muteBtnLabel">음성 ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 16:9 3D WebGL 애니메이션 무대 -->
+  <main class="flex-1 flex flex-col items-center justify-center p-2.5 sm:p-4 md:p-5">
+    <div class="w-full max-w-6xl bg-[#060A15] border border-slate-800/90 rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col relative">
+      
+      <!-- 챕터 네비게이션 탭 -->
+      <div class="grid grid-cols-5 border-b border-slate-800/90 bg-slate-950/90 text-[11px] sm:text-xs z-20">
+        <button data-scene="0" class="scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer">
+          01. 펌프가 없다면
+        </button>
+        <button data-scene="1" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          02. Na⁺-K⁺ 펌프
+        </button>
+        <button data-scene="2" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          03. Ca²⁺ 펌프
+        </button>
+        <button data-scene="3" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          04. NCX 교환체
+        </button>
+        <button data-scene="4" class="scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer">
+          05. 펌프 실험
+        </button>
+      </div>
+
+      <!-- 16:9 Three.js 3D 뷰포트 컨테이너 -->
+      <div id="viewportContainer" class="relative w-full aspect-video min-h-[460px] sm:min-h-[540px] bg-[#040711] overflow-hidden">
+        
+        <!-- Three.js WebGL 렌더링 타겟 -->
+        <div id="threeContainer" class="w-full h-full"></div>
+
+        <!-- 3D 좌표 투영 공간 라벨 레이어 -->
+        <div id="spatialLabelsLayer" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+        <!-- 시작 오버레이 -->
+        <div id="startOverlay" class="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-400/20 to-amber-400/15 border border-sky-400/50 flex items-center justify-center mb-4 shadow-[0_0_35px_rgba(56,189,248,0.35)]">
+            <svg class="w-8 h-8 text-sky-300" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+          <span class="text-xs font-mono-tech tracking-widest text-sky-400 uppercase mb-2">Interactive Real-Time 3D Membrane Engine</span>
+          <h2 class="text-xl sm:text-3xl font-black text-white mb-3 tracking-tight">
+            이온 펌프: Na⁺-K⁺ 펌프 · Ca²⁺ 펌프 · NCX
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 max-w-xl mb-6 leading-relaxed">
+            ATP를 써서 이온을 거꾸로 퍼 올리는 Na⁺-K⁺ 펌프와 Ca²⁺ 펌프, 그 기울기를 빌려 쓰는 NCX 교환체의 작동을 3D로 따라가 보세요.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="startWithVoiceBtn" type="button"
+              class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-amber-500/30 flex items-center gap-2 transition transform hover:scale-105 cursor-pointer">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              음성 나레이션과 함께 3D 시작
+            </button>
+            <button id="startSilentBtn" type="button"
+              class="px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition cursor-pointer">
+              자막만으로 보기
+            </button>
+          </div>
+        </div>
+
+        <!-- 좌측 상단: 씬 타이틀 & 3D 카메라 인디케이터 -->
+        <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[60%]">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl glass-panel">
+            <span id="hudSceneNum" class="text-xs font-mono-tech font-bold text-amber-400">SCENE 01</span>
+            <span class="text-slate-600">|</span>
+            <span id="hudSceneTitle" class="text-xs sm:text-sm font-bold text-slate-100 truncate">이온 펌프</span>
+          </div>
+          <div id="hudSubBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-[11px] text-rose-200 w-fit backdrop-blur-sm">
+            <span>Na⁺-K⁺ 펌프 · Ca²⁺ 펌프 · NCX</span>
+          </div>
+          <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-950/70 text-[10px] font-mono-tech text-slate-400 w-fit">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+            <span id="hudCameraInfo">3D CAM: MEMBRANE VIEW</span>
+          </div>
+        </div>
+
+        <!-- 우측 상단: 3D 줌 컨트롤 바 & 생체 텔레메트리 HUD -->
+        <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end gap-2">
+          <!-- 줌 컨트롤 바 -->
+          <div class="glass-panel rounded-xl px-2 py-1.5 flex items-center gap-1 pointer-events-auto shadow-lg">
+            <button id="zoomOutBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 축소 (−)">
+              −
+            </button>
+            <span id="zoomLevelLabel" class="px-2 min-w-[3.2rem] text-center font-mono-tech text-xs font-bold text-sky-300 select-none">
+              100%
+            </span>
+            <button id="zoomInBtn" type="button"
+              class="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center font-mono-tech font-bold text-sm transition active:scale-95 cursor-pointer"
+              title="3D 카메라 확대 (+)">
+              +
+            </button>
+            <div class="w-px h-4 bg-slate-700/80 mx-0.5"></div>
+            <button id="hudResetViewBtn" type="button"
+              class="px-2 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/30 flex items-center gap-1 text-[11px] font-medium transition active:scale-95 cursor-pointer"
+              title="3D 카메라 각도 및 거리 초기화 (더블클릭)">
+              <span>↺</span>
+              <span class="hidden sm:inline">초기화</span>
+            </button>
+          </div>
+
+          <!-- 생체 텔레메트리 HUD -->
+          <div class="glass-panel rounded-xl p-2.5 sm:p-3.5 w-44 sm:w-60 pointer-events-none">
+            <div class="text-[10px] font-mono-tech text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center border-b border-slate-800 pb-1">
+              <span>MEMBRANE TELEMETRY</span>
+              <span id="telemetryPhaseLabel" class="text-sky-300 font-bold">READY</span>
+            </div>
+            <div class="flex items-baseline justify-between mb-1">
+              <span class="text-[11px] text-slate-300">막전위 (Vm)</span>
+              <div class="font-mono-tech"><span id="hudVm" class="text-base sm:text-lg font-bold text-sky-300">-70</span> <span class="text-[10px] text-slate-400">mV</span></div>
+            </div>
+            <canvas id="vmScope" width="220" height="64" class="w-full h-12 sm:h-14 mb-2 rounded bg-slate-950/70 border border-slate-800"></canvas>
+            <div class="mb-2">
+              <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">이온 기울기</span><span id="hudG1Val" class="font-mono-tech font-bold text-amber-300">—</span></div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div id="hudG1Bar" class="h-full bg-gradient-to-r from-amber-500 via-amber-300 to-emerald-400 transition-all duration-150" style="width: 20%;"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">세포 안 Ca²⁺</span><span id="hudG2Val" class="font-mono-tech font-bold text-sky-400">—</span></div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div id="hudG2Bar" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-150" style="width: 20%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 좌측 플로팅 해부학 콜아웃 카드 -->
+        <div id="sceneFloatingInfo" class="hidden md:flex flex-col gap-2 absolute left-4 top-28 z-20 w-64 glass-panel rounded-xl p-3.5 pointer-events-none transition-all duration-300">
+          <div id="floatingCardTitle" class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>교감신경 폭주 vs 브레이크 저하</span>
+          </div>
+          <p id="floatingCardBody" class="text-[11px] text-slate-300 leading-relaxed">
+            장면 설명이 여기에 나타납니다.
+          </p>
+        </div>
+
+        <!-- SCENE 4 전용: 5대 장기 연쇄 반응 요약 배지 -->
+        <div id="scene4OrganLegend" class="hidden absolute right-4 bottom-24 sm:bottom-28 z-20 glass-panel rounded-xl p-3 w-64 sm:w-72 pointer-events-none">
+          <div class="text-[11px] font-bold text-emerald-300 mb-1.5 border-b border-slate-800 pb-1">펌프와 교환체 비교</div>
+          <ul class="text-[11px] text-slate-200 space-y-1">
+            <li class="flex justify-between"><span class="text-indigo-300 font-semibold">● Na⁺-K⁺ 펌프</span><span>ATP 1 → 3Na⁺ 밖 · 2K⁺ 안</span></li>
+            <li class="flex justify-between"><span class="text-emerald-300 font-semibold">● SERCA</span><span>ATP 1 → Ca²⁺ 2 세망 안</span></li>
+            <li class="flex justify-between"><span class="text-emerald-200 font-semibold">● PMCA</span><span>ATP 1 → Ca²⁺ 1 밖</span></li>
+            <li class="flex justify-between"><span class="text-teal-300 font-semibold">● NCX</span><span>3Na⁺ 안 ↔ 1Ca²⁺ 밖</span></li>
+          </ul>
+        </div>
+
+        <!-- SCENE 5 전용: 인터랙티브 3D 호흡 시뮬레이터 컨트롤 패널 -->
+        <div id="simulatorControls" class="hidden absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-3xl glass-panel rounded-2xl p-3 sm:p-3.5">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+              <span class="text-[11px] font-semibold text-slate-400 mr-1">조건:</span>
+              <button type="button" data-preset="normal" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/25 text-amber-300 border border-amber-400/60 transition cursor-pointer">정상 (모두 작동)</button>
+              <button type="button" data-preset="atp" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">ATP 고갈</button>
+              <button type="button" data-preset="dig" class="sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer">디곡신 (Na⁺-K⁺ 펌프 억제)</button>
+            </div>
+            <button id="manualHoldBtn" type="button"
+              class="w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 shadow-[0_0_20px_rgba(52,211,153,0.35)] transition active:scale-95 cursor-pointer">
+              누르고 있으면 펌프 속도 2배
+            </button>
+          </div>
+        </div>
+
+        <!-- 하단 시네마틱 자막 오버레이 -->
+        <div class="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl pointer-events-none">
+          <div class="bg-slate-950/90 border border-slate-800/90 backdrop-blur-md rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-center shadow-2xl">
+            <p id="subtitleText" class="text-xs sm:text-sm md:text-base font-medium text-slate-100 leading-relaxed">
+              시작 버튼을 누르면 실시간 3D 세포막 애니메이션이 재생됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 플레이어 타임라인 및 컨트롤 바 -->
+      <div class="bg-slate-950 border-t border-slate-800/90 px-4 sm:px-6 py-3 flex flex-col gap-2.5 z-20">
+        <!-- 프로그레스 바 -->
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="sceneProgressBar" class="h-full bg-gradient-to-r from-sky-400 via-amber-400 to-emerald-400 transition-all duration-150" style="width: 0%;"></div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <!-- 좌측 재생 컨트롤 -->
+          <div class="flex items-center gap-2">
+            <button id="prevSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="이전 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+
+            <button id="playPauseBtn" type="button"
+              class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer">
+              <svg id="iconPlay" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="iconPause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span id="playPauseLabel">재생</span>
+            </button>
+
+            <button id="nextSceneBtn" type="button"
+              class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition disabled:opacity-40 cursor-pointer"
+              title="다음 씬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            <button id="replayNarrationBtn" type="button"
+              class="ml-1 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="현재 장면 다시 듣기">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <span class="hidden sm:inline">다시 듣기</span>
+            </button>
+          </div>
+
+          <!-- 우측 시리즈 예고 & 카운터 -->
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="hidden md:inline">시리즈 다음 편: <strong class="text-slate-300">4편 활동전위</strong></span>
+            <span class="font-mono-tech font-bold text-slate-200 bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">
+              <span id="currentSceneCounter">1</span> / 5
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * 1편: 신경계의 스위치 — 횡격막과 미주신경의 비밀 (True 3D Three.js Engine)
+     * - Three.js r128 WebGL 3D 메시 및 실시간 동적 버텍스 변형(횡격막 수축/이완)
+     * - 360도 구면 좌표계 궤도 카메라(Spherical Orbit Camera) + 줌/패닝
+     * - 3D TubeGeometry 미주신경망 및 활동전위 빛 입자(Sphere) 시뮬레이션
+     * - 3D 월드 좌표 → 2D 스크린 좌표 투영 해부학 라벨(Spatial Labels)
+     * =========================================================================
+     */
+
+    const SCENES = [
+      {
+        id: 0, num: "SCENE 01", title: "펌프가 없다면?",
+        badgeText: "누출만 계속되면 기울기가 무너진다", badgeClass: "bg-rose-500/20 border-rose-400/40 text-rose-200",
+        camInfo: "3D CAM: LEAK ONLY · GRADIENT RUN-DOWN",
+        cameraTarget: { theta: 0.3, phi: 1.34, radius: 16, targetX: 0, targetY: 0, targetZ: 0 },
+        cardTitle: "새는 배터리", cardColor: "text-rose-300",
+        cardBody: "통로로 Na⁺는 들어오고 K⁺는 나간다. 되돌리는 장치가 없으면 이온 기울기가 서서히 줄어 막전위도 0을 향해 무너진다.",
+        durationMs: 14000,
+        subtitleHtml: "누출 통로로 <span class='text-blue-400 font-bold'>Na⁺는 들어오고</span> <span class='text-orange-400 font-bold'>K⁺는 나간다</span> → 펌프가 멈추면 <span class='text-rose-300 font-bold'>이온 기울기가 무너진다</span>",
+        narrationText: "세포막의 통로로는 나트륨 이온이 조금씩 들어오고 칼륨 이온이 조금씩 빠져나갑니다. 만약 이것을 되돌리는 장치가 없다면 어떻게 될까요? 이온 기울기는 서서히 줄어들고, 막전위도 영을 향해 무너집니다. 배터리가 새는 것과 같습니다. 그래서 세포는 에이티피를 써서 이온을 거꾸로 퍼 올리는 펌프를 끊임없이 돌립니다."
+      },
+      {
+        id: 1, num: "SCENE 02", title: "Na⁺-K⁺ 펌프의 한 바퀴",
+        badgeText: "ATP 1개 → 3Na⁺ 밖으로 · 2K⁺ 안으로", badgeClass: "bg-indigo-500/20 border-indigo-400/45 text-indigo-200",
+        camInfo: "3D CAM: MACRO · Na⁺/K⁺-ATPase CYCLE",
+        cameraTarget: { theta: 0.55, phi: 1.4, radius: 8.2, targetX: -2.8, targetY: 0, targetZ: 0 },
+        cardTitle: "일차 능동 수송 · 기전성 펌프", cardColor: "text-indigo-300",
+        cardBody: "안쪽으로 열린 펌프에 Na⁺ 3개가 붙고, ATP의 인산이 붙으면(인산화) 모양이 바뀌어 바깥쪽으로 열린다. Na⁺를 내보내고 K⁺ 2개를 받아 인산이 떨어지면 다시 안쪽으로 열린다.",
+        durationMs: 18000,
+        subtitleHtml: "<span class='text-blue-400 font-bold'>Na⁺ 3개 결합</span> → <span class='text-yellow-300 font-bold'>ATP 인산화</span> → 바깥쪽으로 열림 → <span class='text-orange-400 font-bold'>K⁺ 2개 결합</span> → 탈인산화 → 안쪽으로 열림",
+        narrationText: "나트륨 칼륨 펌프의 한 바퀴를 따라가 보겠습니다. 먼저 세포 안쪽으로 열린 펌프에 나트륨 이온 세 개가 붙습니다. 노란 에이티피가 다가와 인산을 넘겨주면 펌프의 모양이 바뀌어 바깥쪽으로 열리고, 나트륨 이온 세 개를 세포 밖으로 내보냅니다. 이어서 바깥의 칼륨 이온 두 개가 붙고, 인산이 떨어지면 다시 안쪽으로 열리며 칼륨 이온을 세포 안으로 들여보냅니다. 한 바퀴마다 양전하 하나가 밖으로 나가므로 기전성 펌프라고 부릅니다."
+      },
+      {
+        id: 2, num: "SCENE 03", title: "Ca²⁺ 펌프 — PMCA와 SERCA",
+        badgeText: "세포질 Ca²⁺ ≈ 0.0001 mM 유지", badgeClass: "bg-emerald-500/20 border-emerald-400/45 text-emerald-200",
+        camInfo: "3D CAM: Ca²⁺-ATPase · SERCA / PMCA",
+        cameraTarget: { theta: -0.4, phi: 1.4, radius: 8.6, targetX: 2.8, targetY: 0, targetZ: -0.4 },
+        cardTitle: "Ca²⁺은 강력한 세포 안 신호", cardColor: "text-emerald-300",
+        cardBody: "Ca²⁺ 펌프는 ATP를 써서 세포질의 Ca²⁺을 세포 밖(PMCA) 또는 근형질세망 안(SERCA, ATP 1개당 Ca²⁺ 2개)으로 내보낸다. SERCA가 Ca²⁺을 거둬들여야 근육이 이완된다.",
+        durationMs: 16000,
+        subtitleHtml: "<span class='text-emerald-400 font-bold'>Ca²⁺ 펌프</span>가 세포질 Ca²⁺을 아주 낮게 지킨다 → SERCA가 Ca²⁺을 거둬들여야 <span class='text-amber-300 font-bold'>근육이 이완</span>된다 (2편)",
+        narrationText: "칼슘 이온은 세포 안 농도가 약 영 점 영영영일 밀리몰로 아주 낮게 유지됩니다. 그래서 조금만 들어와도 근수축이나 신경전달물질 분비를 일으키는 강력한 신호가 됩니다. 초록색 칼슘 펌프는 에이티피를 써서 칼슘 이온을 세포 밖이나 근형질세망 안으로 퍼 올립니다. 근형질세망의 칼슘 펌프인 서카는 에이티피 하나로 칼슘 이온 두 개를 옮기며, 이 펌프가 칼슘을 거둬들여야 근육이 이완됩니다."
+      },
+      {
+        id: 3, num: "SCENE 04", title: "NCX — 기울기를 빌려 쓰는 교환체",
+        badgeText: "Na⁺ 3개 유입 ↔ Ca²⁺ 1개 유출 (이차 능동 수송)", badgeClass: "bg-teal-500/20 border-teal-400/45 text-teal-200",
+        camInfo: "3D CAM: Na⁺-Ca²⁺ EXCHANGER",
+        cameraTarget: { theta: 0.2, phi: 1.32, radius: 9.5, targetX: 0.2, targetY: 0, targetZ: 1.8 },
+        cardTitle: "펌프가 만든 기울기를 쓰는 수송", cardColor: "text-teal-300",
+        cardBody: "NCX는 ATP를 직접 쓰지 않는다. Na⁺-K⁺ 펌프가 만든 Na⁺ 기울기를 따라 Na⁺ 3개가 들어오는 힘으로 Ca²⁺ 1개를 내보낸다. Na⁺-K⁺ 펌프가 약해지면 NCX도 약해진다.",
+        durationMs: 16000,
+        subtitleHtml: "<span class='text-teal-300 font-bold'>NCX</span>: <span class='text-blue-400 font-bold'>Na⁺ 3개</span>가 기울기를 따라 들어오는 힘으로 <span class='text-emerald-400 font-bold'>Ca²⁺ 1개</span>를 내보낸다 → 이차 능동 수송",
+        narrationText: "청록색 단백질은 나트륨 칼슘 교환체, 엔씨엑스입니다. 이 교환체는 에이티피를 직접 쓰지 않습니다. 나트륨 칼륨 펌프가 만들어 둔 나트륨 기울기를 따라 나트륨 이온 세 개가 들어오는 힘을 빌려, 칼슘 이온 하나를 세포 밖으로 내보냅니다. 이렇게 다른 펌프가 만든 기울기를 쓰는 수송을 이차 능동 수송이라고 합니다. 그래서 나트륨 칼륨 펌프가 약해지면 엔씨엑스도 함께 약해집니다."
+      },
+      {
+        id: 4, num: "SCENE 05", title: "펌프 시뮬레이터",
+        badgeText: "ATP 고갈 · 디곡신 · 펌프 속도", badgeClass: "bg-amber-500/25 border-amber-400/50 text-amber-200",
+        camInfo: "3D CAM: INTERACTIVE 360° · DRAG TO ORBIT",
+        cameraTarget: { theta: 0.3, phi: 1.34, radius: 15, targetX: 0, targetY: 0, targetZ: 0 },
+        cardTitle: "펌프를 멈추면 무슨 일이?", cardColor: "text-sky-300",
+        cardBody: "ATP가 고갈되면 모든 펌프가 멈춰 기울기가 무너지고 세포 안 Ca²⁺이 쌓인다. 디곡신은 Na⁺-K⁺ 펌프만 억제해 세포 안 Na⁺↑ → NCX 약화 → 세포 안 Ca²⁺↑(심근 수축력↑).",
+        durationMs: 999999,
+        subtitleHtml: "<span class='text-rose-300 font-bold'>ATP 고갈</span> → 모든 펌프 정지 · <span class='text-purple-300 font-bold'>디곡신</span> → Na⁺-K⁺ 펌프만 억제 → NCX 약화 → <span class='text-emerald-400 font-bold'>세포 안 Ca²⁺↑</span>",
+        narrationText: "이제 펌프를 직접 조작해 보세요. 에이티피가 고갈되면 모든 펌프가 멈추고, 이온 기울기가 무너지면서 세포 안에 칼슘 이온이 쌓입니다. 심장약인 디곡신은 나트륨 칼륨 펌프만 억제합니다. 그러면 세포 안 나트륨이 늘어 엔씨엑스가 약해지고, 세포 안 칼슘이 늘어 심근의 수축력이 커집니다. 가운데 버튼을 누르고 있으면 펌프가 두 배로 빨리 돕니다."
+      }
+    ];
+    const EP = {
+      dens: i => i >= 1 && i <= 3 ? 0.45 : 0.8,
+      slots: [[-2.8, 0, 1.25], [2.8, -0.4, 1.25], [0.2, 1.8, 1.0], [3.9, 2.4], [-4.6, 2.2]],
+      channels: [{ name: 'k1', type: 'kleak', pos: [3.9, 2.4] }, { name: 'n1', type: 'naleak', pos: [-4.6, 2.2] }],
+      pumps: [{ name: 'nak', type: 'nak', pos: [-2.8, 0] }, { name: 'ca', type: 'ca', pos: [2.8, -0.4] }, { name: 'ncx', type: 'ncx', pos: [0.2, 1.8] }],
+      cut: i => i === 1 || i === 2 || i === 3,
+      labels: [
+        { id: 'nak', scenes: [1, 4], text: 'Na⁺-K⁺ 펌프', color: '#a5b4fc', pos: [-2.8, 2.3, 0], dyn: () => { const t = W.pumps.nak.t; return !W.pumps.nak.run ? 'Na⁺-K⁺ 펌프 (정지)' : t < .2 ? '① Na⁺ 3개 결합' : t < .3 ? '② ATP → 인산화' : t < .45 ? '③ 바깥쪽으로 열림 · Na⁺ 방출' : t < .7 ? '④ K⁺ 2개 결합' : t < .82 ? '⑤ 탈인산화 · 안쪽으로' : '⑥ K⁺ 2개 안으로'; } },
+        { id: 'ca', scenes: [2, 4], text: 'Ca²⁺ 펌프', color: '#6ee7b7', pos: [2.8, 2.3, -0.4], dyn: () => W.pumps.ca.run ? 'Ca²⁺ 펌프 · ATP 1개당 Ca²⁺ 2개' : 'Ca²⁺ 펌프 (정지)' },
+        { id: 'ncx', scenes: [3, 4], text: 'NCX 교환체', color: '#5eead4', pos: [0.2, 2.3, 1.8], dyn: () => W.pumps.ncx.run ? 'NCX · 3Na⁺ 안 ↔ 1Ca²⁺ 밖' : 'NCX (약해짐)' },
+        { id: 'leakK', scenes: [0], text: 'K⁺ 유출', color: '#fb923c', pos: [3.9, 2.2, 2.4] },
+        { id: 'leakNa', scenes: [0], text: 'Na⁺ 유입', color: '#60a5fa', pos: [-4.6, 2.2, 2.2] }
+      ],
+      grad: 100, cai: 1, vm: -90,
+      enter(i) { this.t0 = performance.now(); if (i === 0 || i === 4) { this.grad = 100; this.cai = 1; } },
+      update(dt, now, i) {
+        const s = dt / 1000, P = W.pumps;
+        let nak = true, ca = true, ncx = true, spd = 1, leak = 2;
+        if (i === 0) { nak = ca = ncx = false; leak = 4; }
+        if (i === 1) { ca = false; ncx = false; }
+        if (i === 2) { nak = false; ncx = false; }
+        if (i === 3) { ca = false; }
+        if (i === 4) { const p = state.simPreset; if (p === 'atp') { nak = ca = false; ncx = this.grad > 40; } if (p === 'dig') { nak = false; } spd = state.isManualHolding ? 2 : 1; }
+        const gradTarget = (nak ? 100 : 0); this.grad += (gradTarget - this.grad) * s * (nak ? 0.25 : 0.06);
+        if (i === 1 || i === 2 || i === 3) this.grad = 100;
+        const caOut = (ca ? 1.2 : 0) + (ncx ? 0.6 * this.grad / 100 : 0);
+        this.cai += ((caOut > 1.4 ? 1 : caOut > 0.4 ? 6 : 14) - this.cai) * s * 0.35;
+        if (i >= 1 && i <= 3) this.cai = 1;
+        P.nak.run = nak; P.ca.run = ca; P.ncx.run = ncx && i !== 1; P.nak.speed = P.ca.speed = P.ncx.speed = spd;
+        const g = this.grad / 100;
+        setPools({ Na: [Math.round(8 + 14 * g), Math.round(3 + 10 * (1 - g))], K: [Math.round(2 + 8 * (1 - g)), Math.round(10 + 12 * g)], Ca: [12, Math.round(this.cai)], A: [0, 6] });
+        flux('k1', 'K', 'out', leak, dt); flux('n1', 'Na', 'in', leak, dt);
+        this.vm += ((-90 * g + -10 * (1 - g)) - this.vm) * s * 0.8; setCharge(this.vm);
+        setHud({ phase: ['LEAK ONLY', 'Na⁺/K⁺-ATPase', 'Ca²⁺-ATPase', 'NCX', 'SIMULATOR'][i], vm: this.vm,
+          g1: [this.grad, '이온 기울기 ' + Math.round(this.grad) + '%'], g2: [Math.min(100, this.cai * 7), '세포 안 Ca²⁺ ' + (this.cai < 2 ? '아주 낮음' : this.cai < 8 ? '증가' : '크게 증가')] });
+      }
+    };
+
+    const state = {
+      currentScene: 0, isPlaying: false, hasStarted: false, isMuted: false, sceneElapsedMs: 0, lastFrameTime: performance.now(),
+      cam: { theta: SCENES[0].cameraTarget.theta, phi: SCENES[0].cameraTarget.phi, radius: SCENES[0].cameraTarget.radius, targetX: 0, targetY: 0, targetZ: 0,
+        userThetaOffset: 0, userPhiOffset: 0, userZoomMult: 1.0, targetUserZoomMult: 1.0, userPanX: 0, userPanY: 0, targetUserPanX: 0, targetUserPanY: 0,
+        dragMode: null, dragStartX: 0, dragStartY: 0, pinchStartDist: 0, pinchStartZoom: 1.0, pinchCenterX: 0, pinchCenterY: 0 },
+      simPreset: 'normal', manualModeActive: false, isManualHolding: false, simCycleTime: 0
+    };
+    const dom = {
+      viewport: document.getElementById('viewportContainer'), threeContainer: document.getElementById('threeContainer'), spatialLabelsLayer: document.getElementById('spatialLabelsLayer'),
+      startOverlay: document.getElementById('startOverlay'), startWithVoiceBtn: document.getElementById('startWithVoiceBtn'), startSilentBtn: document.getElementById('startSilentBtn'),
+      resetCameraBtn: document.getElementById('resetCameraBtn'), zoomInBtn: document.getElementById('zoomInBtn'), zoomOutBtn: document.getElementById('zoomOutBtn'), zoomLevelLabel: document.getElementById('zoomLevelLabel'), hudResetViewBtn: document.getElementById('hudResetViewBtn'),
+      muteToggleBtn: document.getElementById('muteToggleBtn'), iconSoundOn: document.getElementById('iconSoundOn'), iconSoundOff: document.getElementById('iconSoundOff'), muteBtnLabel: document.getElementById('muteBtnLabel'),
+      ttsStatusText: document.getElementById('ttsStatusText'), ttsIndicatorDot: document.getElementById('ttsIndicatorDot'),
+      sceneTabs: document.querySelectorAll('.scene-tab'), hudSceneNum: document.getElementById('hudSceneNum'), hudSceneTitle: document.getElementById('hudSceneTitle'), hudSubBadge: document.getElementById('hudSubBadge'), hudCameraInfo: document.getElementById('hudCameraInfo'),
+      telemetryPhaseLabel: document.getElementById('telemetryPhaseLabel'), hudVm: document.getElementById('hudVm'), vmScope: document.getElementById('vmScope'),
+      hudG1Val: document.getElementById('hudG1Val'), hudG1Bar: document.getElementById('hudG1Bar'), hudG2Val: document.getElementById('hudG2Val'), hudG2Bar: document.getElementById('hudG2Bar'),
+      floatingCardTitle: document.getElementById('floatingCardTitle'), floatingCardBody: document.getElementById('floatingCardBody'), scene4OrganLegend: document.getElementById('scene4OrganLegend'), simulatorControls: document.getElementById('simulatorControls'),
+      subtitleText: document.getElementById('subtitleText'), sceneProgressBar: document.getElementById('sceneProgressBar'), prevSceneBtn: document.getElementById('prevSceneBtn'), playPauseBtn: document.getElementById('playPauseBtn'),
+      iconPlay: document.getElementById('iconPlay'), iconPause: document.getElementById('iconPause'), playPauseLabel: document.getElementById('playPauseLabel'), nextSceneBtn: document.getElementById('nextSceneBtn'),
+      replayNarrationBtn: document.getElementById('replayNarrationBtn'), currentSceneCounter: document.getElementById('currentSceneCounter'),
+      manualHoldBtn: document.getElementById('manualHoldBtn'), presetBtns: document.querySelectorAll('.sim-preset-btn')
+    };
+    /* ===== 공용 3D 엔진: 세포막 · 이온 · 통로 · 펌프 · 축삭 (인체의 움직임 조절 1편 시리즈) ===== */
+    let scene3D, camera3D, renderer3D;
+    const W = { ions: {}, chans: {}, pumps: {}, transit: [], vmHist: [] };
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const ION = {
+      Na: { c: 0x60a5fa, r: 0.24, t: 'Na⁺' }, K: { c: 0xfb923c, r: 0.27, t: 'K⁺' }, Cl: { c: 0xa3e635, r: 0.24, t: 'Cl⁻' },
+      A: { c: 0xc084fc, r: 0.36, t: 'A⁻' }, Ca: { c: 0x34d399, r: 0.25, t: 'Ca²⁺' }
+    };
+    const TEXC = {};
+    function textTex(t, fg) {
+      const k = t + fg; if (TEXC[k]) return TEXC[k];
+      const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+      g.font = '800 64px "Noto Sans KR", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 12; g.strokeStyle = 'rgba(2,6,23,.85)'; g.strokeText(t, 128, 66); g.fillStyle = fg || '#fff'; g.fillText(t, 128, 66);
+      const tx = new THREE.CanvasTexture(c); TEXC[k] = tx; return tx;
+    }
+    function sprite(t, s, fg) { const m = new THREE.SpriteMaterial({ map: textTex(t, fg), depthTest: false, transparent: true }); const sp = new THREE.Sprite(m); sp.scale.set(s * 2, s, 1); sp.renderOrder = 20; return sp; }
+    function glowMat(c, e) { return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: e == null ? 0.35 : e, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 1 }); }
+    function rnd(s) { const x = Math.sin(s * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+    function ez(u) { u = Math.max(0, Math.min(1, u)); return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+    const OUT = { y0: 1.75, y1: 4.0 }, INN = { y0: -4.0, y1: -1.75 };
+
+    function initThree3D() {
+      const rect = dom.viewport.getBoundingClientRect();
+      const width = rect.width || 960, height = rect.height || 540;
+      scene3D = new THREE.Scene();
+      scene3D.fog = new THREE.FogExp2(0x040711, 0.028);
+      camera3D = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+      renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer3D.setSize(width, height);
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer3D.toneMappingExposure = 1.2;
+      dom.threeContainer.appendChild(renderer3D.domElement);
+      scene3D.add(new THREE.AmbientLight(0x1e293b, 1.5));
+      const key = new THREE.DirectionalLight(0xe0f2fe, 1.6); key.position.set(6, 9, 8); scene3D.add(key);
+      const rim = new THREE.DirectionalLight(0x38bdf8, 1.1); rim.position.set(-7, 4, -8); scene3D.add(rim);
+      const fill = new THREE.DirectionalLight(0xfbbf24, 0.5); fill.position.set(0, -8, 4); scene3D.add(fill);
+      const sg = new THREE.BufferGeometry(), sp = new Float32Array(260 * 3);
+      for (let i = 0; i < 260; i++) { sp[i * 3] = (Math.random() - .5) * 24; sp[i * 3 + 1] = (Math.random() - .5) * 18; sp[i * 3 + 2] = (Math.random() - .5) * 24; }
+      sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+      W.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.07, transparent: true, opacity: 0.4 })); scene3D.add(W.stars);
+      W.mem = new THREE.Group(); scene3D.add(W.mem);
+      W.axonG = new THREE.Group(); scene3D.add(W.axonG); W.axonG.visible = false;
+      buildMembrane(EP.slots || []);
+      buildIons();
+      (EP.channels || []).forEach(c => buildChannel(c));
+      (EP.pumps || []).forEach(p => buildPump(p));
+      buildCharge(); buildTransit(); if (EP.electrode) buildElectrode(); if (EP.axon) buildAxon();
+      if (EP.build) EP.build();
+      initSpatialLabels();
+      window.addEventListener('resize', onViewportResize);
+    }
+    function onViewportResize() {
+      if (!renderer3D || !camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      camera3D.aspect = (rect.width || 960) / (rect.height || 540); camera3D.updateProjectionMatrix();
+      renderer3D.setSize(rect.width || 960, rect.height || 540);
+    }
+    /* --- 인지질 이중층 --- */
+    function buildMembrane(slots) {
+      const L = [];
+      for (let x = -6.4; x <= 6.41; x += 0.55) for (let z = -3.6; z <= 3.61; z += 0.55) {
+        const px = x + (rnd(x * 7 + z * 13) - .5) * .16, pz = z + (rnd(x * 3 + z * 5) - .5) * .16;
+        if (slots.some(s => Math.hypot(px - s[0], pz - s[1]) < (s[2] || 0.95))) continue;
+        [1, -1].forEach(sd => L.push({ x: px, z: pz, s: sd, ph: rnd(px * 11 + pz * 17 + sd) * 6.28 }));
+      }
+      W.lip = L;
+      W.heads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.23, 12, 10), new THREE.MeshStandardMaterial({ color: 0xf4c96b, emissive: 0x7c4a03, emissiveIntensity: 0.25, roughness: 0.5 }), L.length);
+      const tg = new THREE.CylinderGeometry(0.04, 0.035, 0.95, 5);
+      W.tails = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8, transparent: true, opacity: 0.85 }), L.length * 2);
+      W.mem.add(W.heads); W.mem.add(W.tails);
+      const dmy = new THREE.Object3D();
+      W.updLip = function (now, cut) {
+        const w = now * 0.001;
+        L.forEach((l, i) => {
+          const b = Math.sin(w * 1.4 + l.ph) * .035, k = (cut && l.z > 0.3) ? 1e-4 : 1;
+          dmy.position.set(l.x, l.s * 1.4 + b, l.z); dmy.rotation.set(0, 0, 0); dmy.scale.setScalar(k); dmy.updateMatrix(); W.heads.setMatrixAt(i, dmy.matrix);
+          for (let t = 0; t < 2; t++) { dmy.position.set(l.x + (t ? .07 : -.07), l.s * 0.88 + b, l.z); dmy.rotation.set(0, 0, Math.sin(w + l.ph + t) * .08); dmy.updateMatrix(); W.tails.setMatrixAt(i * 2 + t, dmy.matrix); }
+        });
+        W.heads.instanceMatrix.needsUpdate = true; W.tails.instanceMatrix.needsUpdate = true;
+      };
+      W.updLip(0, false);
+    }
+    /* --- 이온 무리 (세포 밖 / 안) --- */
+    function ionMesh(type) {
+      const d = ION[type]; const m = new THREE.Mesh(new THREE.SphereGeometry(d.r, 18, 14), glowMat(d.c, 0.45));
+      const s = sprite(d.t, d.r * 1.25); m.add(s); m.userData.sp = s; return m;
+    }
+    function setOp(m, o) { m.material.opacity = o; m.visible = o > 0.02; if (m.userData.sp) m.userData.sp.material.opacity = o; }
+    function buildIons() {
+      Object.keys(ION).forEach((type, ti) => {
+        W.ions[type] = { out: [], in: [], nOut: 0, nIn: 0 };
+        ['out', 'in'].forEach((side, si) => {
+          const R = side === 'out' ? OUT : INN;
+          for (let k = 0; k < 26; k++) {
+            const m = ionMesh(type); const sd = ti * 100 + si * 50 + k;
+            m.userData.b = V3((rnd(sd) - .5) * 12, R.y0 + rnd(sd + .3) * (R.y1 - R.y0), (rnd(sd + .7) - .5) * 7);
+            m.userData.ph = rnd(sd + .1) * 6.28; m.position.copy(m.userData.b); setOp(m, 0); W.mem.add(m); W.ions[type][side].push(m);
+          }
+        });
+      });
+    }
+    function setPools(p) { const f = EP.dens ? EP.dens(state.currentScene) : 1; Object.keys(W.ions).forEach(t => { const v = p[t] || [0, 0]; W.ions[t].nOut = Math.round(v[0] * f); W.ions[t].nIn = Math.round(v[1] * f); }); }
+    function updIons(dt, now) {
+      const w = now * 0.001;
+      Object.keys(W.ions).forEach(t => {
+        const I = W.ions[t];
+        ['out', 'in'].forEach(side => {
+          const n = side === 'out' ? I.nOut : I.nIn;
+          I[side].forEach((m, k) => {
+            const tgt = k < n ? 1 : 0; const o = m.material.opacity + (tgt - m.material.opacity) * Math.min(1, dt * 0.004);
+            setOp(m, o); const b = m.userData.b, ph = m.userData.ph;
+            m.position.set(b.x + Math.sin(w * .8 + ph) * .28, b.y + Math.cos(w * .7 + ph * 1.3) * .2, b.z + Math.sin(w * .6 + ph * .7) * .28);
+          });
+        });
+      });
+    }
+    /* --- 이온 통로 --- */
+    const CHC = { kleak: 0xfb923c, naleak: 0x60a5fa, nav: 0x3b82f6, kv: 0xf97316 };
+    function buildChannel(c) {
+      const g = new THREE.Group(); g.position.set(c.pos[0], 0, c.pos[1]); W.mem.add(g);
+      const col = CHC[c.type], mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.25, roughness: 0.4, transparent: true, opacity: 0.92 });
+      for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; const m = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.1, 14), mat); m.position.set(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.45); g.add(m); }
+      const o = { type: c.type, name: c.name, g: g, mat: mat, open: c.type.indexOf('leak') > 0 ? 1 : 0, inact: 0, pos: V3(c.pos[0], 0, c.pos[1]) };
+      if (c.type === 'nav') {
+        o.hA = new THREE.Group(); o.hA.position.set(-0.55, 1.62, 0); const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.1, 28), glowMat(0x22c55e, 0.5)); lid.position.x = 0.55; o.hA.add(lid); g.add(o.hA);
+        o.hI = new THREE.Group(); o.hI.position.set(0.5, -1.62, 0.5); o.hI.rotation.y = 2.36; const lid2 = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.12, 24), glowMat(0xef4444, 0.5)); lid2.position.x = 0.72; o.hI.add(lid2); g.add(o.hI);
+      }
+      if (c.type === 'kv') { o.hK = new THREE.Group(); o.hK.position.set(-0.55, -1.62, 0); const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.1, 28), glowMat(0xeab308, 0.5)); lid.position.x = 0.55; o.hK.add(lid); g.add(o.hK); }
+      W.chans[c.name] = o; return o;
+    }
+    function updChannels() {
+      Object.values(W.chans).forEach(o => {
+        if (o.hA) o.hA.rotation.z = 1.35 * o.open;
+        if (o.hI) o.hI.rotation.z = -1.25 * (1 - o.inact);
+        if (o.hK) o.hK.rotation.z = -1.35 * o.open;
+        o.mat.emissiveIntensity = 0.2 + 0.6 * (o.open * (1 - o.inact));
+      });
+    }
+    /* --- 지나가는 이온 (통로·펌프를 통과) --- */
+    function buildTransit() {
+      for (let i = 0; i < 70; i++) { const m = ionMesh('Na'); setOp(m, 0); W.mem.add(m); W.transit.push({ m: m, u: -1 }); }
+    }
+    function spawnTransit(type, from, to, through, dur) {
+      const t = W.transit.find(x => x.u < 0); if (!t) return;
+      const d = ION[type]; t.m.material.color.setHex(d.c); t.m.material.emissive.setHex(d.c); t.m.userData.sp.material.map = textTex(d.t); t.m.scale.setScalar(d.r / 0.24);
+      const up = from.y > 0 ? 1 : -1;
+      t.curve = new THREE.CatmullRomCurve3([from, V3(through.x, up * 1.9, through.z), V3(through.x, -up * 1.9, through.z), to]);
+      t.u = 0; t.dur = dur || 1.3;
+    }
+    function rndIn(side, near) { const R = side === 'out' ? OUT : INN; const x = near ? near.x + (Math.random() - .5) * 4 : (Math.random() - .5) * 11; const z = near ? near.z + (Math.random() - .5) * 3 : (Math.random() - .5) * 6; return V3(x, R.y0 + Math.random() * (R.y1 - R.y0), z); }
+    const FLX = {};
+    function flux(chName, type, dir, rate, dt) {
+      const ch = W.chans[chName]; if (!ch) return; FLX[chName] = (FLX[chName] || 0) + rate * dt / 1000;
+      while (FLX[chName] >= 1) { FLX[chName] -= 1; const a = dir === 'in' ? 'out' : 'in', b = dir === 'in' ? 'in' : 'out'; spawnTransit(type, rndIn(a, ch.pos), rndIn(b, ch.pos), ch.pos); }
+    }
+    function updTransit(dt) {
+      W.transit.forEach(t => { if (t.u < 0) return; t.u += dt / 1000 / t.dur; if (t.u >= 1) { t.u = -1; setOp(t.m, 0); return; } t.m.position.copy(t.curve.getPoint(ez(t.u))); setOp(t.m, t.u > .85 ? (1 - t.u) / .15 : 1); });
+    }
+    /* --- 펌프 (Na⁺-K⁺ · Ca²⁺ · NCX) --- */
+    function buildPump(p) {
+      const g = new THREE.Group(); g.position.set(p.pos[0], 0, p.pos[1]); W.mem.add(g);
+      const col = { nak: 0x818cf8, ca: 0x10b981, ncx: 0x2dd4bf }[p.type];
+      const o = { type: p.type, name: p.name, g: g, t: 0, run: false, speed: 1, halves: [], carry: [], cycles: 0, pos: V3(p.pos[0], 0, p.pos[1]) };
+      [-1, 1].forEach(s => { const h = new THREE.Group(); h.position.x = 0.32 * s; g.add(h); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 3.4, 22), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.25, roughness: 0.4 })); m.scale.z = 1.5; h.add(m); o.halves.push(h); o.mat = m.material; });
+      const lab = { nak: 'Na⁺-K⁺ 펌프', ca: 'Ca²⁺ 펌프', ncx: 'NCX' }[p.type];
+      o.atp = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 12), glowMat(0xfacc15, 0.7)); const as = sprite('ATP', 0.32); o.atp.add(as); o.atp.userData.sp = as; W.mem.add(o.atp); setOp(o.atp, 0);
+      const spec = p.type === 'nak' ? [['Na', 'in2out'], ['Na', 'in2out'], ['Na', 'in2out'], ['K', 'out2in'], ['K', 'out2in']] : p.type === 'ca' ? [['Ca', 'in2out'], ['Ca', 'in2out']] : [['Na', 'out2in'], ['Na', 'out2in'], ['Na', 'out2in'], ['Ca', 'in2out']];
+      spec.forEach((s, i) => { const m = ionMesh(s[0]); setOp(m, 0); W.mem.add(m); o.carry.push({ m: m, type: s[0], dir: s[1], k: i, a: null, b: null }); });
+      W.pumps[p.name] = o; return o;
+    }
+    function updPumps(dt) {
+      Object.values(W.pumps).forEach(o => {
+        if (o.run) { o.t += dt / 1000 / (o.type === 'nak' ? 6.0 : 5.0) * o.speed; if (o.t >= 1) { o.t -= 1; o.cycles++; } }
+        const t = o.t, P = o.pos;
+        let s;
+        if (o.type === 'ncx') s = Math.sin(t * Math.PI * 2) * 0.4;
+        else if (o.type === 'nak') s = t < .3 ? -1 : t < .42 ? -1 + 2 * ez((t - .3) / .12) : t < .7 ? 1 : t < .82 ? 1 - 2 * ez((t - .7) / .12) : -1;
+        else s = t < .3 ? -1 : t < .42 ? -1 + 2 * ez((t - .3) / .12) : t < .65 ? 1 : t < .77 ? 1 - 2 * ez((t - .65) / .12) : -1;
+        o.halves[0].rotation.z = s * 0.16; o.halves[1].rotation.z = -s * 0.16;
+        const flash = (o.type !== 'ncx' && t > .2 && t < .3) ? 1 : 0; o.mat.emissiveIntensity = 0.25 + flash * 0.8;
+        const atpOn = o.type !== 'ncx' && o.run;
+        const aS = V3(P.x + 1.6, -3.2, P.z + 1.2), aB = V3(P.x + 0.2, -1.95, P.z + 0.5);
+        o.atp.position.copy(t < .2 ? aS.clone().lerp(aB, ez(t / .2)) : t < .3 ? aB : aB.clone().lerp(V3(P.x - 1.5, -3.6, P.z + 1.4), ez((t - .3) / .2)));
+        o.atp.userData.sp.material.map = textTex(t > .27 ? 'ADP' : 'ATP');
+        setOp(o.atp, atpOn ? (t < .05 ? t / .05 : t < .3 ? 1 : Math.max(0, 1 - (t - .3) / .2)) : 0);
+        o.carry.forEach(c => {
+          if (!c.a) { const sideA = c.dir === 'in2out' ? 'in' : 'out'; c.a = rndIn(sideA, P); c.b = rndIn(sideA === 'in' ? 'out' : 'in', P); c.off = V3((c.k % 3 - 1) * 0.22, 0, (c.k > 2 ? .2 : -.15)); }
+          let w0, w1, op = 1;
+          if (o.type === 'nak') { if (c.type === 'Na') { w0 = .0; w1 = .45; } else { w0 = .5; w1 = .95; } }
+          else if (o.type === 'ca') { w0 = 0; w1 = .6; } else { w0 = .05; w1 = .85; }
+          const u = (t - w0) / (w1 - w0);
+          const site = P.clone().add(c.off);
+          const ySign = c.dir === 'in2out' ? -1 : 1;
+          let pos;
+          if (u <= 0 || u >= 1) { op = 0; pos = c.a; if (u >= 1) { c.a = null; } }
+          else if (u < .35) pos = c.a.clone().lerp(V3(site.x, ySign * 0.2, site.z), ez(u / .35));
+          else if (u < .65) pos = V3(site.x, ySign * 0.2 - ySign * 0.4 * ez((u - .35) / .3), site.z);
+          else pos = V3(site.x, -ySign * 0.2, site.z).lerp(c.b, ez((u - .65) / .35));
+          if (!o.run) op = 0;
+          c.m.position.copy(pos); setOp(c.m, op * (u < .08 ? u / .08 : u > .92 ? (1 - u) / .08 : 1));
+        });
+      });
+    }
+    /* --- 막 양쪽 전하 (+ / −) --- */
+    function buildCharge() {
+      W.chg = { out: [], in: [] };
+      ['out', 'in'].forEach(side => {
+        for (let i = 0; i < 24; i++) { const s = sprite('+', 0.42, '#f87171'); s.position.set(-5.5 + (i % 8) * 1.57, side === 'out' ? 2.0 : -2.0, -2.6 + Math.floor(i / 8) * 2.6); s.material.opacity = 0; W.mem.add(s); W.chg[side].push(s); }
+      });
+    }
+    function setCharge(vm) {
+      const a = Math.min(1, Math.abs(vm) / 80), neg = vm < 0;
+      W.chg.out.forEach(s => { s.material.map = textTex(neg ? '+' : '−', neg ? '#f87171' : '#60a5fa'); s.material.opacity = a * 0.95; });
+      W.chg.in.forEach(s => { s.material.map = textTex(neg ? '−' : '+', neg ? '#60a5fa' : '#f87171'); s.material.opacity = a * 0.95; });
+    }
+    /* --- 미세전극 --- */
+    function buildElectrode() {
+      const g = new THREE.Group(); const glass = new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.45, roughness: 0.1, emissive: 0x0ea5e9, emissiveIntensity: 0.15 });
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 4, 16), glass); tube.position.y = 6.2; g.add(tube);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.22, 4.2, 16), glass); cone.rotation.x = Math.PI; cone.position.y = 2.1; g.add(cone);
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 7.5, 6), glowMat(0xe5e7eb, 0.3)); wire.position.y = 4; g.add(wire);
+      g.position.set(-4.2, 0, 1.6); W.mem.add(g); W.electrode = g; g.userData.tipY = -2.1;
+    }
+    /* --- 축삭 (전도) --- */
+    function buildAxon() {
+      const G = W.axonG;
+      const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 15, 32, 1, true), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0x854d0e, emissiveIntensity: 0.2, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+      ax.rotation.z = Math.PI / 2; G.add(ax); W.axMesh = ax;
+      W.myel = []; W.nodes = [];
+      for (let i = 0; i < 6; i++) { const cx = -6.3 + i * 2.5; const m = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 2.1, 32), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, emissive: 0x334155, emissiveIntensity: 0.2, transparent: true, opacity: 0.85, roughness: 0.4 })); m.rotation.z = Math.PI / 2; m.position.x = cx; G.add(m); W.myel.push(m); }
+      for (let i = 0; i < 7; i++) W.nodes.push(-7.55 + i * 2.5);
+      W.apRing = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.13, 12, 40), glowMat(0xfacc15, 1.4)); W.apRing.rotation.y = Math.PI / 2; G.add(W.apRing); W.apRing.visible = false;
+      W.refr = []; for (let i = 0; i < 30; i++) { const m = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.06, 8, 30), glowMat(0x60a5fa, 0.8)); m.rotation.y = Math.PI / 2; m.visible = false; G.add(m); W.refr.push({ m: m, life: 0 }); }
+      W.spark = []; for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0x93c5fd })); m.visible = false; G.add(m); W.spark.push(m); }
+      W.ap = { on: false, x: -7.4, mode: 'myel', last: -99, amp: 1, nodeIdx: 0, dwell: 0, fails: false };
+      W.recX = 2.0; W.rec = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.4, 10), glowMat(0x38bdf8, 0.6)); W.rec.rotation.x = Math.PI; W.rec.position.set(W.recX, 1.6, 0); G.add(W.rec);
+    }
+    function axonSetup(mode) { W.ap.mode = mode; W.myel.forEach((m, i) => { m.visible = mode === 'myel' || (mode === 'demyel' && i !== 2 && i !== 3); }); }
+    function fireAP(nowS) { if (W.ap.on && W.ap.x < 6) return 'busy'; if (nowS - W.ap.last < 0.45) return 'refr'; W.ap.on = true; W.ap.x = -7.4; W.ap.amp = 1; W.ap.nodeIdx = 0; W.ap.dwell = 0; W.ap.last = nowS; return 'ok'; }
+    function updAxon(dt, nowS) {
+      if (!W.apRing) return 0;
+      const A = W.ap, s = dt / 1000;
+      if (A.on) {
+        if (A.mode === 'unmyel') A.x += 2.2 * s;
+        else { const inDemyel = A.mode === 'demyel' && A.x > -2.0 && A.x < 2.9; if (inDemyel) { A.x += 1.6 * s; A.amp -= 0.33 * s; } else { A.dwell += s; if (A.dwell > 0.16) { A.dwell = 0; A.nodeIdx++; A.x = W.nodes[Math.min(W.nodes.length - 1, A.nodeIdx)]; if (A.mode === 'demyel' && A.x > -2.0 && A.x < 2.9) A.x = -1.9; } } }
+        if (A.amp < 0.55) { A.on = false; A.fails = true; }
+        if (A.x > 7.4) A.on = false;
+        const fr = W.refr.find(r => r.life <= 0); if (fr && Math.random() < 0.5) { fr.life = 1; fr.m.position.x = A.x; }
+      }
+      W.apRing.visible = A.on; W.apRing.position.x = A.x; W.apRing.scale.setScalar(0.8 + A.amp * 0.4); W.apRing.material.emissiveIntensity = 0.6 + A.amp;
+      W.refr.forEach(r => { if (r.life > 0) { r.life -= s * 0.9; r.m.visible = true; r.m.material.opacity = r.life * 0.7; } else r.m.visible = false; });
+      W.spark.forEach((m, i) => { m.visible = A.on; if (A.on) { const a = i / W.spark.length * 6.28 + nowS * 3; m.position.set(A.x + (Math.random() - .5) * .3, Math.cos(a) * (1.1 - (nowS * 2 + i) % 1 * .6), Math.sin(a) * (1.1 - (nowS * 2 + i) % 1 * .6)); } });
+      const d = Math.abs(A.x - W.recX); return A.on && d < 0.9 ? -70 + 105 * A.amp * (1 - d / 0.9) : (nowS - A.last < 1.2 && A.last > 0 && !A.on ? -78 : -70);
+    }
+    /* --- 3D 공간 이름표 --- */
+    const spatialLabelNodes = {};
+    function initSpatialLabels() {
+      dom.spatialLabelsLayer.innerHTML = '';
+      (EP.labels || []).forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'spatial-tag px-2.5 py-1 rounded-lg bg-slate-950/85 border text-[11px] font-bold shadow-lg backdrop-blur-sm flex items-center gap-1.5';
+        el.style.borderColor = def.color; el.style.color = def.color;
+        el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full" style="background:${def.color}"></span><span>${def.text}</span>`;
+        dom.spatialLabelsLayer.appendChild(el); spatialLabelNodes[def.id] = el;
+      });
+    }
+    function updateSpatialLabelsProjection() {
+      if (!camera3D) return;
+      const rect = dom.viewport.getBoundingClientRect();
+      (EP.labels || []).forEach(def => {
+        const el = spatialLabelNodes[def.id]; if (!el) return;
+        if (!def.scenes.includes(state.currentScene)) { el.style.opacity = '0'; return; }
+        const p = (typeof def.pos === 'function' ? def.pos() : V3(def.pos[0], def.pos[1], def.pos[2])).clone();
+        if (def.dyn) { const tx = def.dyn(); if (tx && el._t !== tx) { el._t = tx; el.lastChild.textContent = tx; } }
+        p.project(camera3D);
+        if (p.z > 1) { el.style.opacity = '0'; return; }
+        el.style.left = `${(p.x * .5 + .5) * rect.width}px`; el.style.top = `${(-p.y * .5 + .5) * rect.height}px`; el.style.opacity = '0.95';
+      });
+    }
+    /* --- 텔레메트리 HUD --- */
+    const HUD = { phase: '', vm: -70, g1: [0, ''], g2: [0, ''] };
+    function setHud(o) { Object.assign(HUD, o); }
+    function syncTelemetryHUD() {
+      dom.telemetryPhaseLabel.textContent = HUD.phase;
+      dom.hudVm.textContent = (HUD.vm > 0 ? '+' : '') + Math.round(HUD.vm);
+      dom.hudVm.className = 'text-base sm:text-lg font-bold ' + (HUD.vm > -50 ? 'text-amber-300' : 'text-sky-300');
+      dom.hudG1Val.textContent = HUD.g1[1]; dom.hudG1Bar.style.width = Math.max(4, Math.min(100, HUD.g1[0])) + '%';
+      dom.hudG2Val.textContent = HUD.g2[1]; dom.hudG2Bar.style.width = Math.max(4, Math.min(100, HUD.g2[0])) + '%';
+      W.vmHist.push(HUD.vm); if (W.vmHist.length > 180) W.vmHist.shift();
+      const cv = dom.vmScope; if (!cv) return; const g = cv.getContext('2d'), w = cv.width, h = cv.height; g.clearRect(0, 0, w, h);
+      const Y = v => 6 + (45 - v) / 140 * (h - 12);
+      g.strokeStyle = 'rgba(248,113,113,.6)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(0, Y(-55)); g.lineTo(w, Y(-55)); g.stroke(); g.setLineDash([]);
+      g.strokeStyle = 'rgba(148,163,184,.35)'; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(w, Y(0)); g.stroke();
+      g.strokeStyle = '#38bdf8'; g.lineWidth = 2; g.beginPath(); W.vmHist.forEach((v, i) => { const x = i / 179 * w; i ? g.lineTo(x, Y(v)) : g.moveTo(x, Y(v)); }); g.stroke();
+    }
+    /* --- 카메라 + 장면 갱신 --- */
+    let lastSceneSet = -1;
+    function updateSimulationAnd3D(dt, now) {
+      const target = SCENES[state.currentScene].cameraTarget;
+      const lerp = 1 - Math.exp(-dt * 0.0042);
+      ['theta', 'phi', 'radius', 'targetX', 'targetY', 'targetZ'].forEach(k => { state.cam[k] += (target[k] - state.cam[k]) * lerp; });
+      const userLerp = 1 - Math.exp(-dt * 0.014);
+      state.cam.userZoomMult += (state.cam.targetUserZoomMult - state.cam.userZoomMult) * userLerp;
+      state.cam.userPanX += (state.cam.targetUserPanX - state.cam.userPanX) * userLerp;
+      state.cam.userPanY += (state.cam.targetUserPanY - state.cam.userPanY) * userLerp;
+      if (dom.zoomLevelLabel) dom.zoomLevelLabel.textContent = `${Math.round(state.cam.userZoomMult * 100)}%`;
+      if (!state.cam.dragMode) state.cam.theta += Math.sin(now * 0.00065) * 0.00045;
+      const effTheta = state.cam.theta + state.cam.userThetaOffset;
+      const effPhi = Math.max(0.35, Math.min(2.65, state.cam.phi + state.cam.userPhiOffset));
+      const effRadius = Math.max(3.6, Math.min(26.0, state.cam.radius / state.cam.userZoomMult));
+      const lx = state.cam.targetX + state.cam.userPanX, ly = state.cam.targetY + state.cam.userPanY, lz = state.cam.targetZ;
+      camera3D.position.set(lx + effRadius * Math.sin(effPhi) * Math.sin(effTheta), ly + effRadius * Math.cos(effPhi), lz + effRadius * Math.sin(effPhi) * Math.cos(effTheta));
+      camera3D.lookAt(lx, ly, lz);
+      if (lastSceneSet !== state.currentScene) { lastSceneSet = state.currentScene; EP.enter && EP.enter(state.currentScene); }
+      EP.update(dt, now, state.currentScene);
+      W.updLip && W.updLip(now, !!EP.cut && EP.cut(state.currentScene));
+      updIons(dt, now); updChannels(); updTransit(dt); updPumps(dt);
+      if (W.stars) W.stars.rotation.y += dt * 0.00004;
+      syncTelemetryHUD(); updateSpatialLabelsProjection();
+    }
+    function mainLoop(now) {
+      const dt = Math.min(50, now - state.lastFrameTime);
+      state.lastFrameTime = now;
+      if (state.isPlaying && state.hasStarted && state.currentScene < 4) {
+        const scene = SCENES[state.currentScene];
+        state.sceneElapsedMs += dt;
+        const progress = Math.min(100, (state.sceneElapsedMs / scene.durationMs) * 100);
+        dom.sceneProgressBar.style.width = `${progress}%`;
+        if (state.sceneElapsedMs >= scene.durationMs) {
+          goToScene(state.currentScene + 1, true);
+        }
+      }
+      updateSimulationAnd3D(dt, now);
+      if (renderer3D && scene3D && camera3D) renderer3D.render(scene3D, camera3D);
+      requestAnimationFrame(mainLoop);
+    }
+
+    function apAt(u, blocked, weak) {
+      const o = { vm: -70, nav: 0, inact: 0, kv: 0, naF: 0, kF: 0 };
+      if (u < 0) return o;
+      if (weak) { o.vm = u < .8 ? -70 + 9 * ez(u / .8) : -61 - 9 * ez((u - .8) / 1.2); return o; }
+      if (u < .8) o.vm = -70 + 15 * ez(u / .8); else if (u < 1.1) o.vm = -55 + 7 * ez((u - .8) / .3);
+      else if (blocked) o.vm = -48 - 22 * ez((u - 1.1) / 2);
+      else if (u < 2.2) o.vm = -48 + 83 * ez((u - 1.1) / 1.1); else if (u < 2.6) o.vm = 35; else if (u < 4.2) o.vm = 35 - 117 * ez((u - 2.6) / 1.6); else o.vm = -82 + 12 * ez((u - 4.2) / 1.8);
+      o.nav = u < .8 ? 0 : u < 1.1 ? ez((u - .8) / .3) : u < 4.2 ? 1 : 1 - ez((u - 4.2) / .4);
+      o.inact = blocked ? 0 : u < 2.2 ? 0 : u < 2.6 ? ez((u - 2.2) / .4) : u < 4.4 ? 1 : 1 - ez((u - 4.4) / .8);
+      if (blocked) o.nav = u < .8 ? 0 : u < 1.1 ? ez((u - .8) / .3) : Math.max(0, 1 - (u - 1.1) / 1.5);
+      o.kv = blocked ? 0 : u < 2.0 ? 0 : u < 2.8 ? ez((u - 2.0) / .8) : u < 4.2 ? 1 : 1 - ez((u - 4.2) / 1.0);
+      o.naF = blocked ? 0 : (u > 1.1 && u < 2.3 ? 16 : 0); o.kF = u > 2.4 && u < 4.4 ? 12 : 0;
+      return o;
+    }
+
+    /**
+     * =========================================================================
+     * 한국어 음성 나레이션 (Web Speech API)
+     * =========================================================================
+     */
+    const ttsManager = {
+      supported: 'speechSynthesis' in window,
+      koVoice: null,
+
+      init() {
+        if (!this.supported) {
+          dom.ttsStatusText.textContent = "음성 미지원 (자막 모드)";
+          return;
+        }
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          this.koVoice = voices.find(v => v.lang.includes('ko') && (v.name.includes('Google') || v.name.includes('Heami') || v.name.includes('Yuna')))
+                      || voices.find(v => v.lang.includes('ko'));
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      },
+
+      speak(text) {
+        if (!this.supported || state.isMuted || !state.hasStarted) return;
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (this.koVoice) utterance.voice = this.koVoice;
+          utterance.lang = 'ko-KR';
+          utterance.rate = 1.02;
+
+          utterance.onstart = () => {
+            dom.ttsStatusText.textContent = "나레이션 재생 중...";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+          };
+          utterance.onend = () => {
+            dom.ttsStatusText.textContent = "나레이션 대기 중";
+            dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {}
+      },
+
+      stop() {
+        if (!this.supported) return;
+        try {
+          window.speechSynthesis.cancel();
+          dom.ttsStatusText.textContent = state.isMuted ? "음소거됨" : "일시정지됨";
+          dom.ttsIndicatorDot.className = "w-2 h-2 rounded-full bg-slate-500";
+        } catch (e) {}
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 씬 전환 및 3D 카메라 제어 바인딩
+     * =========================================================================
+     */
+    function setUserZoom(nextZoom) {
+      state.cam.targetUserZoomMult = Math.max(0.55, Math.min(3.2, nextZoom));
+    }
+
+    function resetUserCameraView() {
+      state.cam.userThetaOffset = 0;
+      state.cam.userPhiOffset = 0;
+      state.cam.targetUserZoomMult = 1.0;
+      state.cam.targetUserPanX = 0;
+      state.cam.targetUserPanY = 0;
+    }
+
+    function goToScene(index, autoSpeak = true) {
+      if (index < 0) index = 0;
+      if (index >= SCENES.length) index = SCENES.length - 1;
+
+      state.currentScene = index;
+      state.sceneElapsedMs = 0;
+      const scene = SCENES[index];
+
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.className = idx === index
+          ? "scene-tab py-2.5 px-2 font-bold text-center border-b-2 border-amber-400 text-amber-300 bg-slate-900/80 transition truncate cursor-pointer"
+          : "scene-tab py-2.5 px-2 font-medium text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition truncate cursor-pointer";
+      });
+
+      dom.hudSceneNum.textContent = scene.num;
+      dom.hudSceneTitle.textContent = scene.title;
+      dom.hudSubBadge.innerHTML = `<span>${scene.badgeText}</span>`;
+      dom.hudSubBadge.className = `inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] w-fit backdrop-blur-sm ${scene.badgeClass}`;
+      dom.hudCameraInfo.textContent = scene.camInfo;
+
+      dom.floatingCardTitle.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="${scene.cardColor}">${scene.cardTitle}</span>`;
+      dom.floatingCardBody.textContent = scene.cardBody;
+
+      dom.subtitleText.innerHTML = scene.subtitleHtml;
+      dom.currentSceneCounter.textContent = index + 1;
+      dom.sceneProgressBar.style.width = index === 4 ? "100%" : "0%";
+
+      dom.scene4OrganLegend.classList.toggle('hidden', index !== 3);
+      dom.simulatorControls.classList.toggle('hidden', index !== 4);
+
+      dom.prevSceneBtn.disabled = index === 0;
+      dom.nextSceneBtn.disabled = index === SCENES.length - 1;
+
+      if (autoSpeak && state.hasStarted && !state.isMuted) {
+        ttsManager.speak(scene.narrationText);
+      }
+    }
+
+    function setPlayState(playing) {
+      state.isPlaying = playing;
+      dom.iconPlay.classList.toggle('hidden', playing);
+      dom.iconPause.classList.toggle('hidden', !playing);
+      dom.playPauseLabel.textContent = playing ? "일시정지" : "재생";
+
+      if (playing) {
+        if (!state.isMuted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      } else {
+        ttsManager.stop();
+      }
+    }
+
+    function updateMuteUI() {
+      dom.iconSoundOn.classList.toggle('hidden', state.isMuted);
+      dom.iconSoundOff.classList.toggle('hidden', !state.isMuted);
+      dom.muteBtnLabel.textContent = state.isMuted ? "음소거" : "음성 ON";
+    }
+
+    function bindEvents() {
+      // 시작 버튼
+      dom.startWithVoiceBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = false;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, true);
+        setPlayState(true);
+      });
+
+      dom.startSilentBtn.addEventListener('click', () => {
+        state.hasStarted = true;
+        state.isMuted = true;
+        updateMuteUI();
+        dom.startOverlay.classList.add('hidden');
+        goToScene(0, false);
+        setPlayState(true);
+      });
+
+      // 3D WebGL 마우스/터치 궤도 회전 · 패닝 · 줌 인터랙션
+      const targetEl = dom.threeContainer;
+      targetEl.addEventListener('contextmenu', e => e.preventDefault());
+
+      targetEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setUserZoom(state.cam.targetUserZoomMult * factor);
+      }, { passive: false });
+
+      targetEl.addEventListener('dblclick', () => {
+        resetUserCameraView();
+      });
+
+      targetEl.addEventListener('mousedown', e => {
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+        if (e.shiftKey || e.button === 1 || e.button === 2) {
+          state.cam.dragMode = 'pan';
+        } else {
+          state.cam.dragMode = 'orbit';
+        }
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!state.cam.dragMode) return;
+        const dx = e.clientX - state.cam.dragStartX;
+        const dy = e.clientY - state.cam.dragStartY;
+        state.cam.dragStartX = e.clientX;
+        state.cam.dragStartY = e.clientY;
+
+        if (state.cam.dragMode === 'pan') {
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - dx * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + dy * panSpeed));
+        } else {
+          // 360도 자유 궤도 회전
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 멀티터치 핀치 줌 & 3D 회전
+      targetEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          state.cam.dragMode = 'orbit';
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          state.cam.dragMode = 'pinch';
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          state.cam.pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          state.cam.pinchStartZoom = state.cam.targetUserZoomMult;
+          state.cam.pinchCenterX = (t0.clientX + t1.clientX) * 0.5;
+          state.cam.pinchCenterY = (t0.clientY + t1.clientY) * 0.5;
+        }
+      }, { passive: false });
+
+      targetEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && state.cam.dragMode === 'orbit') {
+          const dx = e.touches[0].clientX - state.cam.dragStartX;
+          const dy = e.touches[0].clientY - state.cam.dragStartY;
+          state.cam.dragStartX = e.touches[0].clientX;
+          state.cam.dragStartY = e.touches[0].clientY;
+
+          state.cam.userThetaOffset -= dx * 0.0075;
+          state.cam.userPhiOffset = Math.max(-0.9, Math.min(0.9, state.cam.userPhiOffset - dy * 0.0065));
+        } else if (e.touches.length === 2 && state.cam.dragMode === 'pinch') {
+          e.preventDefault();
+          const t0 = e.touches[0];
+          const t1 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+          const midX = (t0.clientX + t1.clientX) * 0.5;
+          const midY = (t0.clientY + t1.clientY) * 0.5;
+
+          if (state.cam.pinchStartDist > 0) {
+            setUserZoom(state.cam.pinchStartZoom * (dist / state.cam.pinchStartDist));
+          }
+
+          const panSpeed = 0.008 / state.cam.userZoomMult;
+          state.cam.targetUserPanX = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanX - (midX - state.cam.pinchCenterX) * panSpeed));
+          state.cam.targetUserPanY = Math.max(-3.5, Math.min(3.5, state.cam.targetUserPanY + (midY - state.cam.pinchCenterY) * panSpeed));
+          state.cam.pinchCenterX = midX;
+          state.cam.pinchCenterY = midY;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        state.cam.dragMode = null;
+      });
+
+      // 줌 & 시점 초기화 버튼
+      dom.resetCameraBtn.addEventListener('click', resetUserCameraView);
+      dom.hudResetViewBtn.addEventListener('click', resetUserCameraView);
+      dom.zoomInBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult * 1.25));
+      dom.zoomOutBtn.addEventListener('click', () => setUserZoom(state.cam.targetUserZoomMult / 1.25));
+
+      // 음소거 토글
+      dom.muteToggleBtn.addEventListener('click', () => {
+        state.isMuted = !state.isMuted;
+        updateMuteUI();
+        if (state.isMuted) ttsManager.stop();
+        else if (state.isPlaying && state.hasStarted) ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // 씬 탭 전환
+      dom.sceneTabs.forEach((tab, idx) => {
+        tab.addEventListener('click', () => {
+          if (!state.hasStarted) {
+            state.hasStarted = true;
+            dom.startOverlay.classList.add('hidden');
+          }
+          goToScene(idx, true);
+          if (!state.isPlaying) setPlayState(true);
+        });
+      });
+
+      // 재생/일시정지 및 이전/다음
+      dom.playPauseBtn.addEventListener('click', () => {
+        if (!state.hasStarted) {
+          state.hasStarted = true;
+          dom.startOverlay.classList.add('hidden');
+        }
+        setPlayState(!state.isPlaying);
+      });
+      dom.prevSceneBtn.addEventListener('click', () => goToScene(state.currentScene - 1, true));
+      dom.nextSceneBtn.addEventListener('click', () => goToScene(state.currentScene + 1, true));
+      dom.replayNarrationBtn.addEventListener('click', () => {
+        state.sceneElapsedMs = 0;
+        if (state.isMuted) {
+          state.isMuted = false;
+          updateMuteUI();
+        }
+        ttsManager.speak(SCENES[state.currentScene].narrationText);
+      });
+
+      // Scene 5 프리셋 & 수동 홀드 버튼
+      dom.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.manualModeActive = false;
+          state.isManualHolding = false;
+          state.simPreset = btn.dataset.preset;
+          state.simCycleTime = 0;
+
+          dom.presetBtns.forEach(b => {
+            b.className = "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 transition cursor-pointer";
+          });
+          btn.className = "sim-preset-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/25 text-amber-300 border border-amber-400/60 transition cursor-pointer";
+        });
+      });
+
+      const startHold = (e) => {
+        e.preventDefault();
+        state.manualModeActive = true;
+        state.isManualHolding = true;
+        dom.manualHoldBtn.textContent = "펌프 빠르게… (떼면 정상)";
+      };
+      const endHold = (e) => {
+        if (state.isManualHolding) {
+          e.preventDefault();
+          state.isManualHolding = false;
+          dom.manualHoldBtn.textContent = "누르고 있으면 펌프 속도 2배";
+        }
+      };
+
+      dom.manualHoldBtn.addEventListener('mousedown', startHold);
+      window.addEventListener('mouseup', endHold);
+      dom.manualHoldBtn.addEventListener('touchstart', startHold, { passive: false });
+      window.addEventListener('touchend', endHold);
+    }
+
+    window.onload = function () {
+      initThree3D();
+      ttsManager.init();
+      bindEvents();
+      requestAnimationFrame(mainLoop);
+    };
+  </script>
+</body>
+</html>

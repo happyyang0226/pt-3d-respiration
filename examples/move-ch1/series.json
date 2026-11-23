@@ -1,0 +1,104 @@
+{
+  "series": {
+    "id": "move-ch1",
+    "title": "인체의 움직임 조절 1편 · 세포막 흥분성",
+    "slug": "움직임조절1편",
+    "org": "청암대학교 물리치료과",
+    "strip_sub": "물리치료과 · 인체의 움직임 조절 3D 강의",
+    "eyebrow": "Cheongam Univ. · Motor Control · True 3D Series",
+    "hero_html": "움직임은 <span>세포막의 전기 신호</span>에서 시작한다<br>1편 5부작 3D 애니메이션",
+    "narration_sample": "안녕하세요. 인체의 움직임 조절 일편 나레이션 목소리입니다. 칼륨 이온이 빠져나가면 세포 안쪽은 음성이 됩니다."
+  },
+  "glossary": "glossary.json",
+  "medical": true,
+  "output": "움직임조절1편_5부작_통합포털.html",
+  "episodes": [
+    {
+      "id": "move-ch1-ep1",
+      "file": "episodes/ep1.html",
+      "title": "세포막과 이온 기울기",
+      "sub": "전기 신호의 배터리",
+      "desc": "인지질 이중층과 막단백질, 세포 안팎의 이온 분포, K⁺가 새어 나가며 생기는 평형전위",
+      "tags": [
+        "인지질 이중층",
+        "이온 분포",
+        "평형전위",
+        "Nernst"
+      ],
+      "c1": "#60A5FA",
+      "c2": "#FB923C"
+    },
+    {
+      "id": "move-ch1-ep2",
+      "file": "episodes/ep2.html",
+      "title": "안정막전위의 비밀",
+      "sub": "K⁺ 누출 · Na⁺ 누출 · 펌프",
+      "desc": "미세전극으로 막전위를 재고, K⁺ 누출·Na⁺ 누출·Na⁺-K⁺ 펌프가 약 −70~−90 mV를 만드는 원리",
+      "tags": [
+        "안정막전위",
+        "Goldman",
+        "누출 통로",
+        "고칼륨혈증"
+      ],
+      "c1": "#38BDF8",
+      "c2": "#818CF8"
+    },
+    {
+      "id": "move-ch1-ep3",
+      "file": "episodes/ep3.html",
+      "title": "이온 펌프",
+      "sub": "Na⁺-K⁺ 펌프 · Ca²⁺ 펌프 · NCX",
+      "desc": "ATP로 이온을 거꾸로 퍼 올리는 Na⁺-K⁺ 펌프와 Ca²⁺ 펌프, 기울기를 빌려 쓰는 NCX, 디곡신의 작용",
+      "tags": [
+        "Na⁺-K⁺ 펌프",
+        "SERCA",
+        "NCX",
+        "디곡신"
+      ],
+      "c1": "#818CF8",
+      "c2": "#34D399"
+    },
+    {
+      "id": "move-ch1-ep4",
+      "file": "episodes/ep4.html",
+      "title": "활동전위",
+      "sub": "전압개폐 Na⁺ · K⁺ 통로",
+      "desc": "역치에서 Na⁺ 통로가 열리고 불활성화문과 느린 K⁺ 통로가 막전위를 되돌리는 활동전위의 전 과정",
+      "tags": [
+        "역치",
+        "탈분극",
+        "재분극",
+        "국소마취제"
+      ],
+      "c1": "#FBBF24",
+      "c2": "#60A5FA"
+    },
+    {
+      "id": "move-ch1-ep5",
+      "file": "episodes/ep5.html",
+      "label": "마무리편",
+      "title": "불응기와 전도",
+      "sub": "절대·상대불응기 · 도약전도",
+      "desc": "신호가 한 방향으로 전달되는 불응기, 말이집 섬유의 도약전도, 탈말이집 질환의 전도 차단",
+      "tags": [
+        "불응기",
+        "도약전도",
+        "말이집",
+        "다발경화증"
+      ],
+      "c1": "#FB7185",
+      "c2": "#34D399"
+    }
+  ],
+  "test": {
+    "select_word": "흥분성",
+    "select_expect": "흥분성",
+    "josa_query": "평형전위를",
+    "josa_expect": "평형전위",
+    "abbr_query": "RMP",
+    "abbr_expect": "안정막전위",
+    "local_term": "인지질 이중층",
+    "remote_term": "도약전도",
+    "remote_expect_id": "move-ch1-ep5"
+  }
+}
